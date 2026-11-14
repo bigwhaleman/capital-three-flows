@@ -1,0 +1,57 @@
+name: Refresh official observations and deploy Pages
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: capital-flow-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test parsers and model
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          node tests/engine.test.mjs
+      - name: Fetch official data (retains last-good on errors)
+        id: collect
+        continue-on-error: true
+        run: python update_data.py
+      - name: Persist the snapshot including failure status
+        run: |
+          git config user.name 'capital-flow-data-bot'
+          git config user.email 'capital-flow-data-bot@users.noreply.github.com'
+          git add public/data/observations.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update official observation snapshot [skip ci]'
+            git push
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Report upstream failure after publishing explicit stale status
+        if: steps.collect.outcome == 'failure'
+        run: |
+          echo 'At least one source failed. Last-good values and explicit errors were published.'
+          exit 1

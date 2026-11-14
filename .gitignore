@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.update.lock
+*.tmp
+.deploy-auth/
+tools/
+project_state.json
+.playwright-cli/
+*.log
