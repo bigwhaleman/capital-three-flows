@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-14T15:31:09+00:00",
+  "generated_at": "2026-11-14T22:21:53+00:00",
   "site_version": "2.0.0",
   "observation_policy": "No flow is inferred from price or holdings changes. Historical research archive is separate.",
   "sources": {
@@ -9,7 +9,7 @@
       "name": "欧洲中央银行参考汇率",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-14T15:31:09+00:00",
+      "last_attempt_at": "2026-11-14T22:21:53+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -31,7 +31,7 @@
       ],
       "history": [],
       "status": "ok",
-      "last_success_at": "2026-11-14T15:31:09+00:00",
+      "last_success_at": "2026-11-14T22:21:53+00:00",
       "sha256": "4185371ddfed8d83c5cf3d83e48dfa6943da4820f988697fa7f8988a3c0018d7",
       "error": null,
       "fixture": false
@@ -41,7 +41,7 @@
       "name": "美国财政部 TIC 表 5",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-14T15:31:09+00:00",
+      "last_attempt_at": "2026-11-14T22:21:53+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -129,7 +129,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-14T15:31:09+00:00",
+      "last_success_at": "2026-11-14T22:21:53+00:00",
       "sha256": "e5de973b1a6f13c8ec95707d665ce107f53f467db10d7a2d991677ee67d1de11",
       "error": null,
       "fixture": false
@@ -139,7 +139,7 @@
       "name": "美国财政部 TIC 表 1",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-14T15:31:09+00:00",
+      "last_attempt_at": "2026-11-14T22:21:53+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -630,7 +630,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-14T15:31:09+00:00",
+      "last_success_at": "2026-11-14T22:21:53+00:00",
       "sha256": "dbdb9fb062d5f435aa625fd225bd42288029df46be33e84759c4741961e91180",
       "error": null,
       "fixture": false,
