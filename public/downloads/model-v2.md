@@ -1,6 +1,6 @@
-# 资本三流耦合模型与直观看板 V2.2：机制闭环、日频信号与部分识别说明
+# 资本三流耦合模型与高频桥接看板 V2.3：机制闭环、近月估算与部分识别说明
 
-研究与升级日期：2026-11-15（基于 V2.1 七资产二阶守恒引擎升级为 V2.2 直观看板版）。性质：**可运行的结构情景动力学模型 + 7 路官方日频/月频实测看板 + 精确部分识别区间；不是已校准的经验预测器。**
+研究与升级日期：2026-11-15（基于 V2.1/V2.2 升级为 V2.3 高频桥接即时估算版）。性质：**可运行的结构情景动力学模型 + 9 路官方日频/周频/月频实测与留一法高频桥接估算（Bridge Nowcast）+ 精确部分识别区间。**
 
 ## 1. 对 V2.0 模型的七项关键诊断与直接改进
 
@@ -84,8 +84,15 @@ $$J_{UC} \in \big[\max(-\bar{f}_{CU},\; -\overline{n}_U-\bar{f}_R,\; \underline{
 
 ---
 
-## 6. 官方观测源（7 路零密钥直连）与验证范围
+## 6. 高频桥接即时估算（Bridge Nowcast）与 9 路官方数据源
 
+针对美国财政部 TIC 月报约 2 个半月发布滞后，V2.3 引入两组零密钥官方高频序列对尚未披露 TIC 的月份（$t > t_{\text{TIC}}$）执行留一法交叉验证（LOOCV）桥接估算：
+
+1. **外国官方美债存量桥接**：利用纽约联储托管账户外国官方可流通美债周三存量月度差值 $\Delta H41_t$ 拟合带经济范围约束 $\beta\in[0.55,1.35]$ 的一阶桥接方程 $\Delta\text{Official}_t = \alpha + \beta\,\Delta H41_t$，递推步长 $h$ 的 80% 预测区间半宽为 $1.2816\sqrt{h}\cdot\text{RMSE}_{\text{LOOCV}}$。
+2. **全球外资长期证券净买桥接**：合并 FiscalData 历史交割与 TreasuryDirect 最新截标附息国债（Note/Bond）拍卖，构造标准化外资认购特征 $z_t = [\text{IndirectShare}_t,\; -\text{PrimaryDealerShare}_t,\; \text{EquivIndirectAmt}_t]$，求解带经济符号非负约束的岭回归 $\min_{w\ge 0}\|y^{\text{adj}} - Zw\|_2^2 + \lambda\|w\|_2^2$，叠加 H.4.1 官方托管冲量与美股 6/24 个月收缩均值合成总净买入点估计与 80% 预测区间。
+3. **诚实国别边界**：因美联储 H.4.1 与美债拍卖均不披露分国别明细，系统不伪造中国内地或香港近月单月净买卖点估计。
+
+### 9 路零密钥官方直连源清单
 - 欧洲中央银行参考汇率（含 90 日历史与六币美元指数）：`https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml`
 - 美国财政部每日国债收益率曲线（10Y / 2Y / 3M）：`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&page&_format=csv`
 - 中国外汇交易中心 CFETS 国债收益率曲线（10Y / 1Y）：`https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis`
@@ -93,6 +100,8 @@ $$J_{UC} \in \big[\max(-\bar{f}_{CU},\; -\overline{n}_U-\bar{f}_R,\; \underline{
 - 芝加哥期权交易所 Cboe VIX 日频历史：`https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`
 - 美国财政部 TIC 表 5（含中国内地、香港、全球总计与外国官方储备分项）：`https://ticdata.treasury.gov/Publish/slt_table5.txt`
 - 美国财政部 TIC 表 1（全球、内地、香港对美长期证券净交易、股债分项、估值与对账残差）：`https://ticdata.treasury.gov/Publish/slt_table1.txt`
+- 美联储 H.4.1 周报外国官方托管证券（`RESH4F_N.WW` / `RESH4FG_N.WW`）：`https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=7c037361d7d4efc82b17dcd09ff94755&lastobs=100&filetype=csv&label=include&layout=seriescolumn`
+- 美国财政部中长期附息国债拍卖（FiscalData 历史交割 + TreasuryDirect 最新截标）：`https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query` 与 `https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&pagesize=60`
 - 静态核实档案（2026-11-13 核验封存）：国家外汇管理局《2026年上半年中国国际收支报告》及 9 月跨境资金答记者问。
 
-基础验证共覆盖 **18 项代数/数值/部分识别测试**、**14 项官方数据解析/故障保留测试** 与 **24 项浏览器桌面/移动端核验**，证明结构守恒、无绕道套利、双向反馈方向、RK2 收敛、7 路官方源解析及识别区间精确性；不冒称样本外预测胜率或投资回测。
+基础验证共覆盖 **18 项代数/数值/部分识别测试**、**17 项官方数据解析/高频桥接单调性与容错测试** 及 **桌面/移动端无头浏览器核验**。

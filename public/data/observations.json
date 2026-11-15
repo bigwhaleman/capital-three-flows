@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-15T09:30:48+00:00",
-  "site_version": "2.2.0",
-  "observation_policy": "Daily market rates/prices and monthly cross-border transactions are strictly separated. No flow is fabricated from price or holdings changes.",
+  "generated_at": "2026-11-15T10:20:59+00:00",
+  "site_version": "2.3.0",
+  "observation_policy": "Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.",
   "sources": {
     "ecb_fx": {
       "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml",
       "name": "欧洲中央银行参考汇率（90日序列）",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:47+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -400,7 +400,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:47+00:00",
       "sha256": "9811ba2a93131661323bac357cf1a839d6b8111bc2a98d6339073dc5e7fba94a",
       "error": null,
       "fixture": false
@@ -410,7 +410,7 @@
       "name": "美国财政部每日国债收益率曲线",
       "frequency": "交易日日频",
       "id": "us_treasury_yield",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:47+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -801,7 +801,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:47+00:00",
       "sha256": "7940584cb08f8aa016d786b71015d85e3226612c7a3756129c064b32fa9795da",
       "error": null,
       "fixture": false
@@ -811,7 +811,7 @@
       "name": "中国外汇交易中心国债收益率（SDDS）",
       "frequency": "交易日日频",
       "id": "cn_gov_yield",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:48+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -939,8 +939,8 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
-      "sha256": "beecac810756ecddfaa40446215cb818696e99b9e3da7d7b1304465aa6ee7cc5",
+      "last_success_at": "2026-11-15T10:20:48+00:00",
+      "sha256": "f5f4a798eed262be2127a11ae8ff30960072d018dc797257f6e078eb10ad7c40",
       "error": null,
       "fixture": false
     },
@@ -949,7 +949,7 @@
       "name": "纽约联储隔夜担保融资利率（SOFR）",
       "frequency": "交易日日频",
       "id": "nyfed_sofr",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:48+00:00",
       "period": "2026-11-12",
       "metrics": [
         {
@@ -1272,7 +1272,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:48+00:00",
       "sha256": "0ef8a4658ca433366c8e905e65c61e851e5877734986c0a600dea2cb983c60e3",
       "error": null,
       "fixture": false
@@ -1282,7 +1282,7 @@
       "name": "Cboe 标普500波动率指数（VIX）",
       "frequency": "交易日日频",
       "id": "cboe_vix",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:48+00:00",
       "status": "ok",
       "error": null,
       "metrics": [
@@ -1538,7 +1538,7 @@
         }
       ],
       "period": "2026-11-13",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:48+00:00",
       "sha256": "d4e2b1199951501b7757814b6e1c2356394922a7ea8ef16d85c3a4596e6e2c2d",
       "fixture": false
     },
@@ -1547,7 +1547,7 @@
       "name": "美国财政部 TIC 表 5（美债存量）",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:50+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -1690,7 +1690,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:50+00:00",
       "sha256": "e5de973b1a6f13c8ec95707d665ce107f53f467db10d7a2d991677ee67d1de11",
       "error": null,
       "fixture": false
@@ -1700,7 +1700,7 @@
       "name": "美国财政部 TIC 表 1（跨境净买卖）",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-15T09:30:47+00:00",
+      "last_attempt_at": "2026-11-15T10:20:51+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -2191,7 +2191,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "last_success_at": "2026-11-15T10:20:51+00:00",
       "sha256": "dbdb9fb062d5f435aa625fd225bd42288029df46be33e84759c4741961e91180",
       "error": null,
       "fixture": false,
@@ -3619,6 +3619,1268 @@
           ]
         }
       }
+    },
+    "fed_h41_custody": {
+      "url": "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=7c037361d7d4efc82b17dcd09ff94755&lastobs=100&from=&to=&filetype=csv&label=include&layout=seriescolumn",
+      "name": "美联储 H.4.1 周报（外国官方托管证券）",
+      "frequency": "周频（滞后约 3 天）",
+      "id": "fed_h41_custody",
+      "last_attempt_at": "2026-11-15T10:20:52+00:00",
+      "period": "2026-11-11",
+      "metrics": [
+        {
+          "id": "h41_custody_ust",
+          "name": "美联储托管外国官方美债",
+          "value": 25241.89,
+          "unit": "亿美元",
+          "kind": "周频官方托管存量",
+          "note": "美联储 H.4.1 表 RESH4FG_N.WW（周三日终存量），滞后仅约 3 天，是 TIC 外国官方美债存量的核心高频同步锚。"
+        },
+        {
+          "id": "h41_custody_total",
+          "name": "美联储托管外国官方证券合计",
+          "value": 27936.13,
+          "unit": "亿美元",
+          "kind": "周频官方托管存量",
+          "note": "涵盖外国央行及国际组织在纽约联储托管的可流通美债、机构债与 MBS。"
+        },
+        {
+          "id": "h41_custody_4w_chg",
+          "name": "近 4 周官方托管美债变动",
+          "value": -267.0,
+          "unit": "亿美元",
+          "kind": "周频滚动变动",
+          "note": "最新周三较 4 周前同口径存量差值；负值代表外国官方托管账户净减持或到期不续作。"
+        }
+      ],
+      "history": [
+        {
+          "period": "2025-09-24",
+          "total": 31192.09,
+          "ust": 28005.61,
+          "agency": 2394.76
+        },
+        {
+          "period": "2025-10-01",
+          "total": 30995.29,
+          "ust": 27815.68,
+          "agency": 2389.18
+        },
+        {
+          "period": "2025-10-08",
+          "total": 30950.59,
+          "ust": 27771.23,
+          "agency": 2389.38
+        },
+        {
+          "period": "2025-10-15",
+          "total": 30641.78,
+          "ust": 27460.91,
+          "agency": 2390.55
+        },
+        {
+          "period": "2025-10-22",
+          "total": 30680.38,
+          "ust": 27508.45,
+          "agency": 2380.5
+        },
+        {
+          "period": "2025-10-29",
+          "total": 31022.68,
+          "ust": 27871.85,
+          "agency": 2372.29
+        },
+        {
+          "period": "2025-11-05",
+          "total": 30846.09,
+          "ust": 27692.12,
+          "agency": 2372.2
+        },
+        {
+          "period": "2025-11-12",
+          "total": 30609.17,
+          "ust": 27454.07,
+          "agency": 2372.4
+        },
+        {
+          "period": "2025-11-19",
+          "total": 30530.78,
+          "ust": 27375.28,
+          "agency": 2371.56
+        },
+        {
+          "period": "2025-11-26",
+          "total": 30685.41,
+          "ust": 27589.27,
+          "agency": 2308.53
+        },
+        {
+          "period": "2025-12-03",
+          "total": 30721.73,
+          "ust": 27627.56,
+          "agency": 2308.53
+        },
+        {
+          "period": "2025-12-10",
+          "total": 30773.52,
+          "ust": 27681.85,
+          "agency": 2308.79
+        },
+        {
+          "period": "2025-12-17",
+          "total": 30667.57,
+          "ust": 27579.72,
+          "agency": 2307.05
+        },
+        {
+          "period": "2025-12-24",
+          "total": 30466.44,
+          "ust": 27426.32,
+          "agency": 2254.51
+        },
+        {
+          "period": "2025-12-31",
+          "total": 30278.12,
+          "ust": 27246.09,
+          "agency": 2246.74
+        },
+        {
+          "period": "2026-01-07",
+          "total": 30598.63,
+          "ust": 27568.27,
+          "agency": 2246.69
+        },
+        {
+          "period": "2026-01-14",
+          "total": 30615.78,
+          "ust": 27607.15,
+          "agency": 2228.42
+        },
+        {
+          "period": "2026-01-21",
+          "total": 30698.5,
+          "ust": 27705.78,
+          "agency": 2212.89
+        },
+        {
+          "period": "2026-01-28",
+          "total": 30886.36,
+          "ust": 27905.28,
+          "agency": 2201.38
+        },
+        {
+          "period": "2026-02-04",
+          "total": 30841.67,
+          "ust": 27865.26,
+          "agency": 2202.11
+        },
+        {
+          "period": "2026-02-11",
+          "total": 30987.06,
+          "ust": 28006.46,
+          "agency": 2202.11
+        },
+        {
+          "period": "2026-02-18",
+          "total": 30890.46,
+          "ust": 27906.29,
+          "agency": 2206.17
+        },
+        {
+          "period": "2026-02-25",
+          "total": 30719.08,
+          "ust": 27755.68,
+          "agency": 2187.81
+        },
+        {
+          "period": "2026-03-04",
+          "total": 30626.17,
+          "ust": 27662.35,
+          "agency": 2187.71
+        },
+        {
+          "period": "2026-03-11",
+          "total": 30230.6,
+          "ust": 27264.8,
+          "agency": 2187.73
+        },
+        {
+          "period": "2026-03-18",
+          "total": 30151.18,
+          "ust": 27172.26,
+          "agency": 2190.63
+        },
+        {
+          "period": "2026-03-25",
+          "total": 29900.53,
+          "ust": 26940.49,
+          "agency": 2172.02
+        },
+        {
+          "period": "2026-04-01",
+          "total": 30265.49,
+          "ust": 27318.4,
+          "agency": 2172.41
+        },
+        {
+          "period": "2026-04-08",
+          "total": 29877.51,
+          "ust": 26930.26,
+          "agency": 2172.46
+        },
+        {
+          "period": "2026-04-15",
+          "total": 29984.84,
+          "ust": 27053.02,
+          "agency": 2172.05
+        },
+        {
+          "period": "2026-04-22",
+          "total": 30203.64,
+          "ust": 27283.59,
+          "agency": 2164.52
+        },
+        {
+          "period": "2026-04-29",
+          "total": 30258.83,
+          "ust": 27350.38,
+          "agency": 2156.14
+        },
+        {
+          "period": "2026-05-06",
+          "total": 30175.01,
+          "ust": 27262.98,
+          "agency": 2156.09
+        },
+        {
+          "period": "2026-05-13",
+          "total": 29781.8,
+          "ust": 26870.59,
+          "agency": 2153.72
+        },
+        {
+          "period": "2026-05-20",
+          "total": 29526.33,
+          "ust": 26668.21,
+          "agency": 2099.84
+        },
+        {
+          "period": "2026-05-27",
+          "total": 29646.43,
+          "ust": 26796.5,
+          "agency": 2092.59
+        },
+        {
+          "period": "2026-06-03",
+          "total": 29313.02,
+          "ust": 26469.64,
+          "agency": 2092.64
+        },
+        {
+          "period": "2026-06-10",
+          "total": 29179.65,
+          "ust": 26334.09,
+          "agency": 2092.64
+        },
+        {
+          "period": "2026-06-17",
+          "total": 29163.15,
+          "ust": 26312.91,
+          "agency": 2097.17
+        },
+        {
+          "period": "2026-06-24",
+          "total": 29208.25,
+          "ust": 26369.47,
+          "agency": 2083.29
+        },
+        {
+          "period": "2026-07-01",
+          "total": 29088.68,
+          "ust": 26258.83,
+          "agency": 2077.4
+        },
+        {
+          "period": "2026-07-08",
+          "total": 28803.57,
+          "ust": 25972.78,
+          "agency": 2077.42
+        },
+        {
+          "period": "2026-07-15",
+          "total": 28805.0,
+          "ust": 25979.17,
+          "agency": 2078.14
+        },
+        {
+          "period": "2026-07-22",
+          "total": 29024.77,
+          "ust": 26227.31,
+          "agency": 2047.2
+        },
+        {
+          "period": "2026-07-29",
+          "total": 29352.89,
+          "ust": 26566.33,
+          "agency": 2042.18
+        },
+        {
+          "period": "2026-08-05",
+          "total": 29099.66,
+          "ust": 26310.99,
+          "agency": 2043.46
+        },
+        {
+          "period": "2026-08-12",
+          "total": 28755.77,
+          "ust": 25968.42,
+          "agency": 2043.46
+        },
+        {
+          "period": "2026-08-19",
+          "total": 28649.74,
+          "ust": 25861.71,
+          "agency": 2044.66
+        },
+        {
+          "period": "2026-08-26",
+          "total": 28911.31,
+          "ust": 26152.46,
+          "agency": 2013.1
+        },
+        {
+          "period": "2026-09-02",
+          "total": 28771.29,
+          "ust": 26012.41,
+          "agency": 2014.14
+        },
+        {
+          "period": "2026-09-09",
+          "total": 28653.65,
+          "ust": 25900.95,
+          "agency": 2012.52
+        },
+        {
+          "period": "2026-09-16",
+          "total": 28847.17,
+          "ust": 26088.21,
+          "agency": 2020.71
+        },
+        {
+          "period": "2026-09-23",
+          "total": 28703.4,
+          "ust": 25974.51,
+          "agency": 1989.39
+        },
+        {
+          "period": "2026-09-30",
+          "total": 28547.37,
+          "ust": 25823.5,
+          "agency": 1982.37
+        },
+        {
+          "period": "2026-10-07",
+          "total": 28372.37,
+          "ust": 25654.77,
+          "agency": 1982.37
+        },
+        {
+          "period": "2026-10-14",
+          "total": 28222.94,
+          "ust": 25508.89,
+          "agency": 1982.97
+        },
+        {
+          "period": "2026-10-21",
+          "total": 28431.95,
+          "ust": 25728.47,
+          "agency": 1971.48
+        },
+        {
+          "period": "2026-10-28",
+          "total": 28380.71,
+          "ust": 25685.97,
+          "agency": 1966.72
+        },
+        {
+          "period": "2026-11-04",
+          "total": 28133.36,
+          "ust": 25437.0,
+          "agency": 1966.72
+        },
+        {
+          "period": "2026-11-11",
+          "total": 27936.13,
+          "ust": 25241.89,
+          "agency": 1966.72
+        }
+      ],
+      "monthly": [
+        {
+          "period": "2024-12",
+          "through_date": "2024-12-25",
+          "ust": 29035.37,
+          "total": 32852.18,
+          "d_ust": null
+        },
+        {
+          "period": "2025-01",
+          "through_date": "2025-01-29",
+          "ust": 28996.49,
+          "total": 32734.38,
+          "d_ust": -38.88
+        },
+        {
+          "period": "2025-02",
+          "through_date": "2025-02-26",
+          "ust": 29266.7,
+          "total": 32945.27,
+          "d_ust": 270.21
+        },
+        {
+          "period": "2025-03",
+          "through_date": "2025-03-26",
+          "ust": 29310.15,
+          "total": 32941.11,
+          "d_ust": 43.45
+        },
+        {
+          "period": "2025-04",
+          "through_date": "2025-04-30",
+          "ust": 29168.75,
+          "total": 32715.28,
+          "d_ust": -141.4
+        },
+        {
+          "period": "2025-05",
+          "through_date": "2025-05-28",
+          "ust": 29090.04,
+          "total": 32569.28,
+          "d_ust": -78.71
+        },
+        {
+          "period": "2025-06",
+          "through_date": "2025-06-25",
+          "ust": 28755.04,
+          "total": 32190.19,
+          "d_ust": -335.0
+        },
+        {
+          "period": "2025-07",
+          "through_date": "2025-07-30",
+          "ust": 29057.48,
+          "total": 32430.83,
+          "d_ust": 302.44
+        },
+        {
+          "period": "2025-08",
+          "through_date": "2025-08-27",
+          "ust": 28424.99,
+          "total": 31697.87,
+          "d_ust": -632.49
+        },
+        {
+          "period": "2025-09",
+          "through_date": "2025-09-24",
+          "ust": 28005.61,
+          "total": 31192.09,
+          "d_ust": -419.38
+        },
+        {
+          "period": "2025-10",
+          "through_date": "2025-10-29",
+          "ust": 27871.85,
+          "total": 31022.68,
+          "d_ust": -133.76
+        },
+        {
+          "period": "2025-11",
+          "through_date": "2025-11-26",
+          "ust": 27589.27,
+          "total": 30685.41,
+          "d_ust": -282.58
+        },
+        {
+          "period": "2025-12",
+          "through_date": "2025-12-31",
+          "ust": 27246.09,
+          "total": 30278.12,
+          "d_ust": -343.18
+        },
+        {
+          "period": "2026-01",
+          "through_date": "2026-01-28",
+          "ust": 27905.28,
+          "total": 30886.36,
+          "d_ust": 659.19
+        },
+        {
+          "period": "2026-02",
+          "through_date": "2026-02-25",
+          "ust": 27755.68,
+          "total": 30719.08,
+          "d_ust": -149.6
+        },
+        {
+          "period": "2026-03",
+          "through_date": "2026-03-25",
+          "ust": 26940.49,
+          "total": 29900.53,
+          "d_ust": -815.19
+        },
+        {
+          "period": "2026-04",
+          "through_date": "2026-04-29",
+          "ust": 27350.38,
+          "total": 30258.83,
+          "d_ust": 409.89
+        },
+        {
+          "period": "2026-05",
+          "through_date": "2026-05-27",
+          "ust": 26796.5,
+          "total": 29646.43,
+          "d_ust": -553.88
+        },
+        {
+          "period": "2026-06",
+          "through_date": "2026-06-24",
+          "ust": 26369.47,
+          "total": 29208.25,
+          "d_ust": -427.03
+        },
+        {
+          "period": "2026-07",
+          "through_date": "2026-07-29",
+          "ust": 26566.33,
+          "total": 29352.89,
+          "d_ust": 196.86
+        },
+        {
+          "period": "2026-08",
+          "through_date": "2026-08-26",
+          "ust": 26152.46,
+          "total": 28911.31,
+          "d_ust": -413.87
+        },
+        {
+          "period": "2026-09",
+          "through_date": "2026-09-30",
+          "ust": 25823.5,
+          "total": 28547.37,
+          "d_ust": -328.96
+        },
+        {
+          "period": "2026-10",
+          "through_date": "2026-10-28",
+          "ust": 25685.97,
+          "total": 28380.71,
+          "d_ust": -137.53
+        },
+        {
+          "period": "2026-11",
+          "through_date": "2026-11-11",
+          "ust": 25241.89,
+          "total": 27936.13,
+          "d_ust": -444.08
+        }
+      ],
+      "status": "ok",
+      "last_success_at": "2026-11-15T10:20:52+00:00",
+      "sha256": "455378a2232d96568025da37905ba0de69d7fa2f47e21f8bc5498288e0a90f0d",
+      "error": null,
+      "fixture": false
+    },
+    "ust_auctions": {
+      "url": "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query?fields=cusip,auction_date,issue_date,security_type,security_term,comp_accepted,indirect_bidder_accepted,primary_dealer_accepted,fima_noncomp_accepted&filter=auction_date:gte:2023-08-01,security_type:in:(Note,Bond)&sort=auction_date&page[size]=1000",
+      "name": "美国财政部中长期国债拍卖（海外间接投标）",
+      "frequency": "按场次实时更新（月均 8–9 场附息债）",
+      "id": "ust_auctions",
+      "last_attempt_at": "2026-11-15T10:20:52+00:00",
+      "period": "2026-11-12",
+      "metrics": [
+        {
+          "id": "ust_indirect_share",
+          "name": "美债附息拍卖海外间接获配占比（月初至今）",
+          "value": 59.94,
+          "unit": "%",
+          "kind": "一级市场外资需求指标",
+          "note": "美国财政部中长期附息国债（Note & Bond）拍卖中 Indirect Bidders 获配占比；外国央行与海外机构主要经此通道认购。"
+        },
+        {
+          "id": "ust_indirect_amt",
+          "name": "美债附息拍卖海外间接获配额（月初至今）",
+          "value": 745.65,
+          "unit": "亿美元",
+          "kind": "一级市场获配规模",
+          "note": "2026-11 已完成 3 场附息国债拍卖累计获配额（截至 2026-11-12）。"
+        },
+        {
+          "id": "ust_pd_share",
+          "name": "美债拍卖一级交易商兜底占比（月初至今）",
+          "value": 9.96,
+          "unit": "%",
+          "kind": "一级市场承接压力指标",
+          "note": "Primary Dealers 被动承接比例越高，通常意味着海外与终端买盘认购意愿越弱。"
+        }
+      ],
+      "history": [
+        {
+          "period": "2023-10",
+          "through_date": "2023-10-26",
+          "auction_count": 9,
+          "comp_amt": 3012.82,
+          "indirect_amt": 1934.67,
+          "primary_dealer_amt": 542.35,
+          "fima_amt": 0.0,
+          "indirect_share": 64.21,
+          "primary_dealer_share": 18.0
+        },
+        {
+          "period": "2023-11",
+          "through_date": "2023-11-28",
+          "auction_count": 9,
+          "comp_amt": 3146.47,
+          "indirect_amt": 2030.51,
+          "primary_dealer_amt": 591.62,
+          "fima_amt": 2.0,
+          "indirect_share": 64.53,
+          "primary_dealer_share": 18.8
+        },
+        {
+          "period": "2023-12",
+          "through_date": "2023-12-28",
+          "auction_count": 9,
+          "comp_amt": 3200.57,
+          "indirect_amt": 2045.3,
+          "primary_dealer_amt": 601.97,
+          "fima_amt": 3.5,
+          "indirect_share": 63.9,
+          "primary_dealer_share": 18.81
+        },
+        {
+          "period": "2024-01",
+          "through_date": "2024-01-25",
+          "auction_count": 9,
+          "comp_amt": 3294.49,
+          "indirect_amt": 2220.15,
+          "primary_dealer_amt": 521.62,
+          "fima_amt": 1.2,
+          "indirect_share": 67.39,
+          "primary_dealer_share": 15.83
+        },
+        {
+          "period": "2024-02",
+          "through_date": "2024-02-27",
+          "auction_count": 9,
+          "comp_amt": 3411.85,
+          "indirect_amt": 2272.54,
+          "primary_dealer_amt": 577.22,
+          "fima_amt": 0.75,
+          "indirect_share": 66.61,
+          "primary_dealer_share": 16.92
+        },
+        {
+          "period": "2024-03",
+          "through_date": "2024-03-27",
+          "auction_count": 9,
+          "comp_amt": 3485.07,
+          "indirect_amt": 2365.92,
+          "primary_dealer_amt": 550.9,
+          "fima_amt": 1.0,
+          "indirect_share": 67.89,
+          "primary_dealer_share": 15.81
+        },
+        {
+          "period": "2024-04",
+          "through_date": "2024-04-25",
+          "auction_count": 9,
+          "comp_amt": 3659.48,
+          "indirect_amt": 2387.55,
+          "primary_dealer_amt": 640.43,
+          "fima_amt": 0.08,
+          "indirect_share": 65.24,
+          "primary_dealer_share": 17.5
+        },
+        {
+          "period": "2024-05",
+          "through_date": "2024-05-29",
+          "auction_count": 9,
+          "comp_amt": 3663.44,
+          "indirect_amt": 2358.76,
+          "primary_dealer_amt": 652.13,
+          "fima_amt": 0.08,
+          "indirect_share": 64.39,
+          "primary_dealer_share": 17.8
+        },
+        {
+          "period": "2024-06",
+          "through_date": "2024-06-27",
+          "auction_count": 9,
+          "comp_amt": 3621.39,
+          "indirect_amt": 2493.37,
+          "primary_dealer_amt": 534.96,
+          "fima_amt": 5.5,
+          "indirect_share": 68.85,
+          "primary_dealer_share": 14.77
+        },
+        {
+          "period": "2024-07",
+          "through_date": "2024-07-25",
+          "auction_count": 9,
+          "comp_amt": 3621.34,
+          "indirect_amt": 2536.72,
+          "primary_dealer_amt": 461.57,
+          "fima_amt": 3.54,
+          "indirect_share": 70.05,
+          "primary_dealer_share": 12.75
+        },
+        {
+          "period": "2024-08",
+          "through_date": "2024-08-29",
+          "auction_count": 9,
+          "comp_amt": 3580.82,
+          "indirect_amt": 2449.51,
+          "primary_dealer_amt": 570.57,
+          "fima_amt": 4.6,
+          "indirect_share": 68.41,
+          "primary_dealer_share": 15.93
+        },
+        {
+          "period": "2024-09",
+          "through_date": "2024-09-26",
+          "auction_count": 9,
+          "comp_amt": 3584.45,
+          "indirect_amt": 2525.81,
+          "primary_dealer_amt": 495.6,
+          "fima_amt": 6.6,
+          "indirect_share": 70.47,
+          "primary_dealer_share": 13.83
+        },
+        {
+          "period": "2024-10",
+          "through_date": "2024-10-29",
+          "auction_count": 9,
+          "comp_amt": 3677.54,
+          "indirect_amt": 2549.22,
+          "primary_dealer_amt": 554.19,
+          "fima_amt": 0.05,
+          "indirect_share": 69.32,
+          "primary_dealer_share": 15.07
+        },
+        {
+          "period": "2024-11",
+          "through_date": "2024-11-27",
+          "auction_count": 9,
+          "comp_amt": 3673.36,
+          "indirect_amt": 2465.62,
+          "primary_dealer_amt": 526.13,
+          "fima_amt": 1.1,
+          "indirect_share": 67.12,
+          "primary_dealer_share": 14.32
+        },
+        {
+          "period": "2024-12",
+          "through_date": "2024-12-26",
+          "auction_count": 9,
+          "comp_amt": 3632.67,
+          "indirect_amt": 2591.76,
+          "primary_dealer_amt": 525.4,
+          "fima_amt": 2.85,
+          "indirect_share": 71.35,
+          "primary_dealer_share": 14.46
+        },
+        {
+          "period": "2025-01",
+          "through_date": "2025-01-28",
+          "auction_count": 9,
+          "comp_amt": 3628.33,
+          "indirect_amt": 2364.8,
+          "primary_dealer_amt": 510.41,
+          "fima_amt": 2.35,
+          "indirect_share": 65.18,
+          "primary_dealer_share": 14.07
+        },
+        {
+          "period": "2025-02",
+          "through_date": "2025-02-26",
+          "auction_count": 9,
+          "comp_amt": 3592.03,
+          "indirect_amt": 2638.9,
+          "primary_dealer_amt": 444.95,
+          "fima_amt": 1.49,
+          "indirect_share": 73.47,
+          "primary_dealer_share": 12.39
+        },
+        {
+          "period": "2025-03",
+          "through_date": "2025-03-27",
+          "auction_count": 9,
+          "comp_amt": 3597.06,
+          "indirect_amt": 2462.38,
+          "primary_dealer_amt": 498.84,
+          "fima_amt": 2.05,
+          "indirect_share": 68.46,
+          "primary_dealer_share": 13.87
+        },
+        {
+          "period": "2025-04",
+          "through_date": "2025-04-24",
+          "auction_count": 9,
+          "comp_amt": 3688.09,
+          "indirect_amt": 2389.72,
+          "primary_dealer_amt": 642.82,
+          "fima_amt": 2.1,
+          "indirect_share": 64.8,
+          "primary_dealer_share": 17.43
+        },
+        {
+          "period": "2025-05",
+          "through_date": "2025-05-29",
+          "auction_count": 9,
+          "comp_amt": 3685.95,
+          "indirect_amt": 2514.4,
+          "primary_dealer_amt": 455.95,
+          "fima_amt": 2.48,
+          "indirect_share": 68.22,
+          "primary_dealer_share": 12.37
+        },
+        {
+          "period": "2025-06",
+          "through_date": "2025-06-26",
+          "auction_count": 9,
+          "comp_amt": 3650.67,
+          "indirect_amt": 2393.71,
+          "primary_dealer_amt": 547.51,
+          "fima_amt": 0.15,
+          "indirect_share": 65.57,
+          "primary_dealer_share": 15.0
+        },
+        {
+          "period": "2025-07",
+          "through_date": "2025-07-29",
+          "auction_count": 9,
+          "comp_amt": 3647.17,
+          "indirect_amt": 2155.16,
+          "primary_dealer_amt": 482.95,
+          "fima_amt": 2.14,
+          "indirect_share": 59.09,
+          "primary_dealer_share": 13.24
+        },
+        {
+          "period": "2025-08",
+          "through_date": "2025-08-28",
+          "auction_count": 9,
+          "comp_amt": 3585.93,
+          "indirect_amt": 2252.62,
+          "primary_dealer_amt": 469.51,
+          "fima_amt": 3.14,
+          "indirect_share": 62.82,
+          "primary_dealer_share": 13.09
+        },
+        {
+          "period": "2025-09",
+          "through_date": "2025-09-25",
+          "auction_count": 9,
+          "comp_amt": 3609.59,
+          "indirect_amt": 2334.23,
+          "primary_dealer_amt": 425.97,
+          "fima_amt": 0.18,
+          "indirect_share": 64.67,
+          "primary_dealer_share": 11.8
+        },
+        {
+          "period": "2025-10",
+          "through_date": "2025-10-29",
+          "auction_count": 9,
+          "comp_amt": 3698.31,
+          "indirect_amt": 2291.98,
+          "primary_dealer_amt": 470.69,
+          "fima_amt": 2.18,
+          "indirect_share": 61.97,
+          "primary_dealer_share": 12.73
+        },
+        {
+          "period": "2025-11",
+          "through_date": "2025-11-26",
+          "auction_count": 9,
+          "comp_amt": 3698.44,
+          "indirect_amt": 2291.84,
+          "primary_dealer_amt": 487.95,
+          "fima_amt": 2.1,
+          "indirect_share": 61.97,
+          "primary_dealer_share": 13.19
+        },
+        {
+          "period": "2025-12",
+          "through_date": "2025-12-24",
+          "auction_count": 9,
+          "comp_amt": 3659.26,
+          "indirect_amt": 2324.83,
+          "primary_dealer_amt": 414.45,
+          "fima_amt": 1.15,
+          "indirect_share": 63.53,
+          "primary_dealer_share": 11.33
+        },
+        {
+          "period": "2026-01",
+          "through_date": "2026-01-29",
+          "auction_count": 9,
+          "comp_amt": 3646.14,
+          "indirect_amt": 2323.91,
+          "primary_dealer_amt": 439.84,
+          "fima_amt": 2.65,
+          "indirect_share": 63.74,
+          "primary_dealer_share": 12.06
+        },
+        {
+          "period": "2026-02",
+          "through_date": "2026-02-26",
+          "auction_count": 9,
+          "comp_amt": 3599.54,
+          "indirect_amt": 2194.56,
+          "primary_dealer_amt": 482.97,
+          "fima_amt": 1.08,
+          "indirect_share": 60.97,
+          "primary_dealer_share": 13.42
+        },
+        {
+          "period": "2026-03",
+          "through_date": "2026-03-26",
+          "auction_count": 9,
+          "comp_amt": 3607.17,
+          "indirect_amt": 2250.0,
+          "primary_dealer_amt": 674.85,
+          "fima_amt": 2.0,
+          "indirect_share": 62.38,
+          "primary_dealer_share": 18.71
+        },
+        {
+          "period": "2026-04",
+          "through_date": "2026-04-28",
+          "auction_count": 9,
+          "comp_amt": 3695.59,
+          "indirect_amt": 2425.98,
+          "primary_dealer_amt": 502.42,
+          "fima_amt": 2.0,
+          "indirect_share": 65.65,
+          "primary_dealer_share": 13.6
+        },
+        {
+          "period": "2026-05",
+          "through_date": "2026-05-28",
+          "auction_count": 9,
+          "comp_amt": 3690.9,
+          "indirect_amt": 2481.76,
+          "primary_dealer_amt": 506.91,
+          "fima_amt": 3.0,
+          "indirect_share": 67.24,
+          "primary_dealer_share": 13.73
+        },
+        {
+          "period": "2026-06",
+          "through_date": "2026-06-25",
+          "auction_count": 9,
+          "comp_amt": 3652.53,
+          "indirect_amt": 2307.26,
+          "primary_dealer_amt": 485.62,
+          "fima_amt": 2.15,
+          "indirect_share": 63.17,
+          "primary_dealer_share": 13.3
+        },
+        {
+          "period": "2026-07",
+          "through_date": "2026-07-29",
+          "auction_count": 9,
+          "comp_amt": 3638.73,
+          "indirect_amt": 2397.55,
+          "primary_dealer_amt": 461.56,
+          "fima_amt": 3.6,
+          "indirect_share": 65.89,
+          "primary_dealer_share": 12.68
+        },
+        {
+          "period": "2026-08",
+          "through_date": "2026-08-27",
+          "auction_count": 9,
+          "comp_amt": 3576.63,
+          "indirect_amt": 2354.62,
+          "primary_dealer_amt": 444.23,
+          "fima_amt": 4.05,
+          "indirect_share": 65.83,
+          "primary_dealer_share": 12.42
+        },
+        {
+          "period": "2026-09",
+          "through_date": "2026-09-24",
+          "auction_count": 9,
+          "comp_amt": 3591.03,
+          "indirect_amt": 2203.68,
+          "primary_dealer_amt": 497.41,
+          "fima_amt": 3.19,
+          "indirect_share": 61.37,
+          "primary_dealer_share": 13.85
+        },
+        {
+          "period": "2026-10",
+          "through_date": "2026-10-29",
+          "auction_count": 9,
+          "comp_amt": 3668.76,
+          "indirect_amt": 2223.61,
+          "primary_dealer_amt": 399.54,
+          "fima_amt": 12.15,
+          "indirect_share": 60.61,
+          "primary_dealer_share": 10.89
+        },
+        {
+          "period": "2026-11",
+          "through_date": "2026-11-12",
+          "auction_count": 3,
+          "comp_amt": 1243.9,
+          "indirect_amt": 745.65,
+          "primary_dealer_amt": 123.9,
+          "fima_amt": 0.05,
+          "indirect_share": 59.94,
+          "primary_dealer_share": 9.96
+        }
+      ],
+      "recent_auctions": [
+        {
+          "auction_date": "2026-09-23",
+          "security_type": "Note",
+          "security_term": "1-Year 10-Month",
+          "comp_amt": 279.9,
+          "indirect_amt": 165.38,
+          "indirect_share": 59.09,
+          "primary_dealer_share": 40.91
+        },
+        {
+          "auction_date": "2026-09-23",
+          "security_type": "Note",
+          "security_term": "5-Year",
+          "comp_amt": 696.69,
+          "indirect_amt": 378.37,
+          "indirect_share": 54.31,
+          "primary_dealer_share": 15.77
+        },
+        {
+          "auction_date": "2026-09-24",
+          "security_type": "Note",
+          "security_term": "7-Year",
+          "comp_amt": 434.81,
+          "indirect_amt": 248.7,
+          "indirect_share": 57.2,
+          "primary_dealer_share": 12.53
+        },
+        {
+          "auction_date": "2026-10-06",
+          "security_type": "Note",
+          "security_term": "3-Year",
+          "comp_amt": 569.96,
+          "indirect_amt": 328.26,
+          "indirect_share": 57.59,
+          "primary_dealer_share": 10.74
+        },
+        {
+          "auction_date": "2026-10-07",
+          "security_type": "Note",
+          "security_term": "9-Year 10-Month",
+          "comp_amt": 386.65,
+          "indirect_amt": 310.63,
+          "indirect_share": 80.34,
+          "primary_dealer_share": 2.54
+        },
+        {
+          "auction_date": "2026-10-08",
+          "security_type": "Bond",
+          "security_term": "29-Year 10-Month",
+          "comp_amt": 219.4,
+          "indirect_amt": 158.66,
+          "indirect_share": 72.32,
+          "primary_dealer_share": 6.79
+        },
+        {
+          "auction_date": "2026-10-21",
+          "security_type": "Bond",
+          "security_term": "19-Year 10-Month",
+          "comp_amt": 129.01,
+          "indirect_amt": 75.03,
+          "indirect_share": 58.16,
+          "primary_dealer_share": 10.26
+        },
+        {
+          "auction_date": "2026-10-22",
+          "security_type": "Note",
+          "security_term": "5-Year",
+          "comp_amt": 256.77,
+          "indirect_amt": 159.29,
+          "indirect_share": 62.04,
+          "primary_dealer_share": 5.53
+        },
+        {
+          "auction_date": "2026-10-26",
+          "security_type": "Note",
+          "security_term": "2-Year",
+          "comp_amt": 678.26,
+          "indirect_amt": 309.81,
+          "indirect_share": 45.68,
+          "primary_dealer_share": 13.0
+        },
+        {
+          "auction_date": "2026-10-27",
+          "security_type": "Note",
+          "security_term": "5-Year",
+          "comp_amt": 692.62,
+          "indirect_amt": 415.88,
+          "indirect_share": 60.05,
+          "primary_dealer_share": 10.56
+        },
+        {
+          "auction_date": "2026-10-28",
+          "security_type": "Note",
+          "security_term": "2-Year",
+          "comp_amt": 299.69,
+          "indirect_amt": 213.92,
+          "indirect_share": 71.38,
+          "primary_dealer_share": 27.95
+        },
+        {
+          "auction_date": "2026-10-29",
+          "security_type": "Note",
+          "security_term": "7-Year",
+          "comp_amt": 436.4,
+          "indirect_amt": 252.12,
+          "indirect_share": 57.77,
+          "primary_dealer_share": 9.41
+        },
+        {
+          "auction_date": "2026-11-09",
+          "security_type": "Note",
+          "security_term": "3-Year",
+          "comp_amt": 576.93,
+          "indirect_amt": 320.1,
+          "indirect_share": 55.48,
+          "primary_dealer_share": 9.48
+        },
+        {
+          "auction_date": "2026-11-10",
+          "security_type": "Note",
+          "security_term": "10-Year",
+          "comp_amt": 417.57,
+          "indirect_amt": 255.67,
+          "indirect_share": 61.23,
+          "primary_dealer_share": 9.77
+        },
+        {
+          "auction_date": "2026-11-12",
+          "security_type": "Bond",
+          "security_term": "30-Year",
+          "comp_amt": 249.4,
+          "indirect_amt": 169.88,
+          "indirect_share": 68.11,
+          "primary_dealer_share": 11.39
+        }
+      ],
+      "status": "ok",
+      "last_success_at": "2026-11-15T10:20:52+00:00",
+      "sha256": "d415addabbdc9840049e632e9cf6e203dd53e1e11bffb9bbb64fe9e869e71103",
+      "error": null,
+      "fixture": false
     }
+  },
+  "nowcast": {
+    "status": "ok",
+    "anchor_period": "2026-08",
+    "latest_h41_date": "2026-11-11",
+    "latest_auction_date": "2026-11-12",
+    "next_tic_release_hint": "美国财政部通常于每月月中（约第 15–18 日）发布滞后两个月的 TIC 正式月报；新月报落地后，本估算窗口自动向后顺延。",
+    "country_boundary_note": "美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 9—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。",
+    "methodology": "双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间。",
+    "validation": {
+      "ci_level": 0.8,
+      "official_holdings_loocv_rmse": 404.1,
+      "official_beta_h41": 0.901,
+      "official_overlap_months": 12,
+      "bond_flow_loocv_rmse": 636.9,
+      "total_flow_loocv_rmse": 943.0,
+      "flow_overlap_months": 35
+    },
+    "months": [
+      {
+        "period": "2026-09",
+        "label": "2026-09 高频估算",
+        "through_date": "2026-09-30",
+        "is_partial_month": false,
+        "auction_count": 9,
+        "comp_amt": 3591.03,
+        "indirect_amt": 2203.68,
+        "indirect_share": 61.37,
+        "primary_dealer_share": 13.85,
+        "h41_through_date": "2026-09-30",
+        "h41_custody_ust": 25823.5,
+        "h41_d_ust": -328.96,
+        "bond": 559.3,
+        "bond_low80": -256.9,
+        "bond_high80": 1375.6,
+        "equity": 852.8,
+        "total": 1412.1,
+        "total_low80": 203.7,
+        "total_high80": 2620.6,
+        "official_holdings": 37276.4,
+        "official_low80": 36758.6,
+        "official_high80": 37794.3,
+        "official_chg": -279.6
+      },
+      {
+        "period": "2026-10",
+        "label": "2026-10 高频估算",
+        "through_date": "2026-10-29",
+        "is_partial_month": false,
+        "auction_count": 9,
+        "comp_amt": 3668.76,
+        "indirect_amt": 2223.61,
+        "indirect_share": 60.61,
+        "primary_dealer_share": 10.89,
+        "h41_through_date": "2026-10-28",
+        "h41_custody_ust": 25685.97,
+        "h41_d_ust": -137.53,
+        "bond": 612.6,
+        "bond_low80": -203.7,
+        "bond_high80": 1428.8,
+        "equity": 852.8,
+        "total": 1465.4,
+        "total_low80": 256.9,
+        "total_high80": 2673.8,
+        "official_holdings": 37169.4,
+        "official_low80": 36437.1,
+        "official_high80": 37901.7,
+        "official_chg": -107.0
+      },
+      {
+        "period": "2026-11",
+        "label": "2026-11 月初至今估算",
+        "through_date": "2026-11-12",
+        "is_partial_month": true,
+        "auction_count": 3,
+        "comp_amt": 1243.9,
+        "indirect_amt": 745.65,
+        "indirect_share": 59.94,
+        "primary_dealer_share": 9.96,
+        "h41_through_date": "2026-11-11",
+        "h41_custody_ust": 25241.89,
+        "h41_d_ust": -444.08,
+        "bond": 487.8,
+        "bond_low80": -475.4,
+        "bond_high80": 1450.9,
+        "equity": 844.1,
+        "total": 1331.8,
+        "total_low80": -94.2,
+        "total_high80": 2757.8,
+        "official_holdings": 36786.1,
+        "official_low80": 35799.5,
+        "official_high80": 37772.7,
+        "official_chg": -383.3
+      }
+    ]
   }
 }

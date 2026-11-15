@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f4f7fb">
-  <meta name="description" content="中美资本三流动态看板 V2.2：今日总览看板、日频利差与市场信号、五项逆转条件进度表、精简汇报视图、七资产双向耦合工作台与真实资金对账。">
-  <title>中美资本三流动态看板 · V2.2 直观看板版</title>
+  <meta name="description" content="中美资本三流动态看板 V2.3：接入 9 组官方公开源，新增美联储 H.4.1 周度托管与美债拍卖高频桥接估算（同图实线实测 + 虚线 80% 预测区间）、五项逆转条件清单与七资产双向耦合工作台。">
+  <title>中美资本三流动态看板 · V2.3 高频桥接估算版</title>
   <link rel="icon" href="assets/favicon.svg">
   <link rel="stylesheet" href="workbench.css">
   <script type="module" src="workbench.mjs"></script>
@@ -15,8 +15,8 @@
 
   <div class="top-notice">
     <div class="notice-inner">
-      <span><b>自动回源看板 V2.2</b> · 接入 7 组官方与交易所公开源（日频国债利差 / SOFR / 汇率 / VIX ＋ 月频 TIC 跨境净买卖与持仓）· 每 6 小时自动核查发布</span>
-      <span class="notice-sub">口径纪律：日频价格看「诱因与阻力」，月度统计看「真实跨境买卖」，情景模型看「条件推演」——三者分层标明，不按秒跳数冒充盘中成交。</span>
+      <span><b>自动回源看板 V2.3</b> · 接入 9 组官方与交易所公开源（日频利差 / SOFR / 汇率 / VIX ＋ 周频联储托管 / 美债拍卖高频桥接 ＋ 月频 TIC 实测）</span>
+      <span class="notice-sub">口径纪律：实线为月度 TIC 已交割实测，虚线与阴影带为美联储 H.4.1 + 国债拍卖桥接的近月估算（80% 区间），情景模型为条件推演——三者严禁混同。</span>
     </div>
   </div>
 
@@ -25,9 +25,9 @@
       <div class="brand-group">
         <a class="brand" href="#overview">
           <span class="brand-mark"><i></i><i></i><i></i></span>
-          <span>中美资本三流看板<small>CAPITAL THREE-FLOWS DASHBOARD · V2.2</small></span>
+          <span>中美资本三流看板<small>CAPITAL THREE-FLOWS DASHBOARD · V2.3</small></span>
         </a>
-        <span class="regime-pill" id="regime-pill"><i class="dot" id="data-dot"></i><b id="regime-text">正在读取实测快照…</b></span>
+        <span class="regime-pill" id="regime-pill"><i class="dot" id="data-dot"></i><b id="regime-text">正在读取实测与高频估算快照…</b></span>
       </div>
 
       <nav class="top-nav" aria-label="主导航">
@@ -46,8 +46,8 @@
     </div>
     <div class="status-ribbon">
       <div class="ribbon-inner">
-        <span id="sync-status">正在读取 7 组公开数据源快照…</span>
-        <span class="edition">直观简报与耦合模型 <b>V2.2</b> · 从简 Clarvy</span>
+        <span id="sync-status">正在读取 9 组公开数据源快照…</span>
+        <span class="edition">高频桥接估算与耦合模型 <b>V2.3</b> · 从简 Clarvy</span>
       </div>
     </div>
   </header>
@@ -75,9 +75,59 @@
         <div class="hero-cards" id="overview-cards"></div>
       </div>
 
-      <div class="section-block">
+      <div class="section-block" id="nowcast-section">
         <div class="sec-title">
           <span class="sec-num">2</span>
+          <div>
+            <h2>最新两个半月高频桥接估算 · 同图「实线实测 + 虚线估算区间」</h2>
+            <p>针对财政部 TIC 月报约 2 个半月发布滞后，接入美联储 H.4.1 周度官方托管与财政部附息国债拍卖实时数据，填补滞后盲区</p>
+          </div>
+          <span class="badge" id="nowcast-badge">80% 留一法预测区间</span>
+        </div>
+        <article class="panel nowcast-panel">
+          <div class="nowcast-grid">
+            <div class="nowcast-chart-box">
+              <div class="panel-head">
+                <div>
+                  <h2>全球外资净买入美国长期证券（实线 TIC 实测 ＋ 虚线高频估算）</h2>
+                  <p>实线圆点为官方已发布月度实测；虚线空心点与阴影扇形为高频桥接估算及 80% 置信区间</p>
+                </div>
+              </div>
+              <div id="nowcast-flow-chart" class="chart compact"></div>
+              <div class="chart-caption" id="nowcast-flow-caption"></div>
+            </div>
+            <div class="nowcast-chart-box">
+              <div class="panel-head">
+                <div>
+                  <h2>外国官方机构持有美债存量（实线 TIC 表 5 ＋ 虚线 H.4.1 桥接）</h2>
+                  <p>由纽约联储托管账户外国官方可流通美债周度变动（滞后仅 3 天）直接桥接月末存量</p>
+                </div>
+              </div>
+              <div id="nowcast-hold-chart" class="chart compact"></div>
+              <div class="chart-caption" id="nowcast-hold-caption"></div>
+            </div>
+          </div>
+          <div class="table-scroll" style="margin-top:14px">
+            <table class="nowcast-table">
+              <thead>
+                <tr>
+                  <th>统计月份与状态</th>
+                  <th>外资长期证券净买估算（80% 区间）</th>
+                  <th>其中：美债净买估算</th>
+                  <th>外国官方美债存量估算（月变动）</th>
+                  <th>底层高频实测锚（附息债拍卖 ＋ 联储 H.4.1 托管）</th>
+                </tr>
+              </thead>
+              <tbody id="nowcast-table-body"></tbody>
+            </table>
+          </div>
+          <p class="micro" id="nowcast-footnote" style="margin-top:10px"></p>
+        </article>
+      </div>
+
+      <div class="section-block">
+        <div class="sec-title">
+          <span class="sec-num">3</span>
           <div>
             <h2>资本流向逆转 · 五项现实条件达标清单</h2>
             <p>不设硬编码倒计时天数——直接追踪触发资本大级别转向的 5 个关键条件目前满足了几项、卡在哪一项</p>
@@ -86,16 +136,16 @@
         <article class="panel checklist-panel">
           <div class="checklist-summary" id="checklist-summary"></div>
           <div class="checklist-rows" id="checklist-rows"></div>
-          <p class="micro" style="margin-top:12px">注：观察线为公开宏观机制参考标尺（非自动交易信号）；每项均标注原始数据统计期与口径，月度 TIC 数据存在约 6–8 周官方发布滞后。</p>
+          <p class="micro" style="margin-top:12px">注：观察线为公开宏观机制参考标尺（非自动交易信号）；月度 TIC 滞后窗口已同步附上上方高频桥接估算供交叉核对。</p>
         </article>
       </div>
 
       <div class="section-block">
         <div class="sec-title">
-          <span class="sec-num">3</span>
+          <span class="sec-num">4</span>
           <div>
-            <h2>日频市场温度计与存量结构对照</h2>
-            <p>上半部分看近 60 个交易日利率、汇率与波动率变化；下半部分看中美利差走廊与外资美债真实持仓结构</p>
+            <h2>日频与周频市场温度计 ＋ 存量结构对照</h2>
+            <p>上半部分汇总 8 项日频利率、汇率、波动率及周频官方托管与美债拍卖外资指标；下半部分对照利差走廊与外资持仓结构</p>
           </div>
         </div>
         <div class="market-grid" id="market-cards"></div>
@@ -126,7 +176,7 @@
 
       <div class="section-block">
         <div class="sec-title">
-          <span class="sec-num">4</span>
+          <span class="sec-num">5</span>
           <div>
             <h2>假如接下来条件改变，资金会怎么走？（四种情景白话推演）</h2>
             <p>由同一套七资产守恒模型自动算出——重点区分「卖美股却留在美元高息现金里」与「真正离开美元池回流中国」</p>
@@ -314,6 +364,7 @@
           <option value="cn">中国内地居民（托管/直接报告口径）</option>
           <option value="hk">中国香港居民（离岸金融枢纽口径）</option>
         </select>
+        <button id="toggle-nowcast" class="nowcast-toggle active" type="button" aria-pressed="true">✓ 同图叠加近月高频估算区间</button>
         <span class="badge" id="history-count"></span>
       </div>
 
@@ -322,13 +373,13 @@
       <article class="panel">
         <div class="panel-head">
           <div>
-            <h2>外国居民对美国长期证券的月度净买卖（TIC 表 1）</h2>
-            <p>月频实测 · 亿美元/月 · 零轴以上为净买入美国股票/债券，零轴以下为净卖出</p>
+            <h2>外国居民对美国长期证券的月度净买卖（TIC 表 1 实测 ＋ 高频桥接估算）</h2>
+            <p id="observed-chart-sub">月频实测（实线）＋ 高频桥接估算（虚线与 80% 区间）· 亿美元/月 · 零轴以上为净买入</p>
           </div>
         </div>
         <div id="observed-chart" class="chart"></div>
-        <div class="legend">
-          <span style="--c:#0d9488">长期证券净买卖合计</span>
+        <div class="legend" id="observed-legend">
+          <span style="--c:#0d9488">长期证券净买卖合计（虚线为估算+80%区间）</span>
           <span style="--c:#2563eb">其中：美国股票</span>
           <span style="--c:#d97706">其中：美国长期债券</span>
         </div>
@@ -423,7 +474,7 @@
       </article>
 
       <div class="section-block" style="margin-top:20px">
-        <h2 style="margin-bottom:12px">7 组自动采集数据源状态与原始校验码</h2>
+        <h2 style="margin-bottom:12px">9 组自动采集数据源状态与原始校验码</h2>
         <div id="source-log" class="source-grid"></div>
       </div>
     </section>
@@ -433,11 +484,28 @@
       <div class="page-heading">
         <div>
           <span class="eyebrow">ARCHITECTURE &amp; METHODOLOGY · 原理与迭代说明</span>
-          <h1>看板设计逻辑与七资产双向耦合方程</h1>
-          <p>既吸收直观简报看板的“结论前置 + 日频温度计 + 达标进度清单”，又严守“真金白银对账 + 七资产守恒 + 部分识别边界”。</p>
+          <h1>看板设计逻辑、高频桥接估算与七资产双向耦合方程</h1>
+          <p>既吸收直观简报看板的“结论前置 + 日频温度计 + 达标进度清单”，又新增“美联储周度托管 + 国债拍卖高频桥接估算”，严守实测、估算与推演三层分界。</p>
         </div>
         <a class="button" href="downloads/model-v2.md" download>↓ 下载完整模型文档</a>
       </div>
+
+      <article class="panel prose">
+        <span class="badge">V2.3 高频桥接即时估算升级 · 2026-11-15</span>
+        <h2>如何用官方周度与拍卖数据填补 TIC 月报 2 个半月滞后盲区？</h2>
+        <p>美国财政部 TIC 月报具有约 65–75 天发布滞后。为在不编造数据的前提下看清近两个半月真实动向，V2.3 接入两组零密钥官方高频源并建立留一法交叉验证（LOOCV）桥接器：</p>
+        <div class="compare-grid">
+          <div>
+            <b>支柱一：美联储 H.4.1 周报 → 外国官方美债存量桥接</b>
+            <p>提取纽约联储托管账户外国官方可流通美债（RESH4FG_N.WW，滞后仅约 3 天）月末差值 ΔH41_UST，带经济范围约束拟合 ΔOfficial_TIC = α + β·ΔH41_UST，逐月递推官方美债存量及多步 80% 预测带。</p>
+          </div>
+          <div>
+            <b>支柱二：财政部附息国债拍卖 → 跨境长期证券净买桥接</b>
+            <p>合并 FiscalData 与 TreasuryDirect 最新已截标 Note/Bond 拍卖，以海外间接投标占比（Indirect %）、交易商被动兜底占比（−Primary Dealer %）及全月等效获配额构建非负单调岭回归，叠加 H.4.1 官方托管冲量与美股收缩均值合成总量估算区间。</p>
+          </div>
+        </div>
+        <p style="margin-top:10px"><b>分国别诚实边界：</b>由于美联储 H.4.1 与美债拍卖均只披露全球外国投资者合计、不披露分国别明细，系统绝不伪造中国内地或香港近月单月净买卖点估计，并在新一期 TIC 月报落地时自动顺延估算窗口。</p>
+      </article>
 
       <article class="panel prose">
         <span class="badge">V2.2 直观简报升级 · 2026-11-15</span>
@@ -510,7 +578,7 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <span>中美资本三流动态看板 · 原创实现 V2.2 · 数据自动回源 + 七资产耦合模型</span>
+      <span>中美资本三流动态看板 · 原创实现 V2.3 · 9 源自动回源 + 高频桥接估算 + 七资产耦合模型</span>
       <span>从简 Clarvy · 仅供宏观机制与数据研究，不构成任何投资建议</span>
     </div>
   </footer>

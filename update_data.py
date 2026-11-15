@@ -21,6 +21,19 @@ def us_yield_url(year=None):
  )
 
 
+def ust_auctions_fiscal_url(year=None):
+ start_year = (year or datetime.now(timezone.utc).year) - 3
+ return (
+  f'https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query?'
+  f'fields=cusip,auction_date,issue_date,security_type,security_term,comp_accepted,'
+  f'indirect_bidder_accepted,primary_dealer_accepted,fima_noncomp_accepted&'
+  f'filter=auction_date:gte:{start_year}-08-01,security_type:in:(Note,Bond)&sort=auction_date&page[size]=1000'
+ )
+
+
+UST_AUCTIONS_RECENT_URL = 'https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&pagesize=60'
+
+
 SOURCES = {
  'ecb_fx': {
   'url': 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml',
@@ -56,6 +69,16 @@ SOURCES = {
   'url': 'https://ticdata.treasury.gov/Publish/slt_table1.txt',
   'name': '美国财政部 TIC 表 1（跨境净买卖）',
   'frequency': '月频，带发布滞后',
+ },
+ 'fed_h41_custody': {
+  'url': 'https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=7c037361d7d4efc82b17dcd09ff94755&lastobs=100&from=&to=&filetype=csv&label=include&layout=seriescolumn',
+  'name': '美联储 H.4.1 周报（外国官方托管证券）',
+  'frequency': '周频（滞后约 3 天）',
+ },
+ 'ust_auctions': {
+  'url': ust_auctions_fiscal_url(),
+  'name': '美国财政部中长期国债拍卖（海外间接投标）',
+  'frequency': '按场次实时更新（月均 8–9 场附息债）',
  },
 }
 
@@ -514,6 +537,580 @@ def parse_transactions(raw):
  }
 
 
+def parse_fed_h41(raw):
+ text = raw.decode('utf-8-sig')
+ lines = text.splitlines()
+ start = next((i for i, s in enumerate(lines) if s.startswith('"Time Period"') or s.startswith('Time Period,')), None)
+ if start is None:
+  raise ValueError('Fed H.4.1 Time Period header missing')
+ reader = csv.DictReader(io.StringIO('\n'.join(lines[start:])))
+ req_cols = ('Time Period', 'RESH4F_N.WW', 'RESH4FG_N.WW')
+ if not reader.fieldnames or not all(c in reader.fieldnames for c in req_cols):
+  raise ValueError('Fed H.4.1 required custody series missing')
+ hist = []
+ for r in reader:
+  tp = (r.get('Time Period') or '').strip()
+  v_tot = (r.get('RESH4F_N.WW') or '').strip()
+  v_ust = (r.get('RESH4FG_N.WW') or '').strip()
+  if not tp or v_tot in ('', 'ND', 'null') or v_ust in ('', 'ND', 'null'):
+   continue
+  p = period_ok(tp)
+  tot = number(v_tot) / 100.0  # million USD -> 亿美元
+  ust = number(v_ust) / 100.0
+  if not (5_000 <= ust <= 200_000 and 5_000 <= tot <= 250_000):
+   raise ValueError('Fed H.4.1 custody range guard failed')
+  item = {'period': p, 'total': round(tot, 2), 'ust': round(ust, 2)}
+  v_ag = (r.get('RESH4FA_N.WW') or '').strip()
+  if v_ag not in ('', 'ND', 'null'):
+   try:
+    ag = number(v_ag) / 100.0
+    if 0 <= ag <= 100_000:
+     item['agency'] = round(ag, 2)
+   except ValueError:
+    pass
+  hist.append(item)
+ if not hist:
+  raise ValueError('Fed H.4.1 custody rows empty')
+ hist.sort(key=lambda x: x['period'])
+ by_ym = {}
+ for x in hist:
+  by_ym[x['period'][:7]] = x
+ yms = sorted(by_ym)
+ monthly = []
+ for i, ym in enumerate(yms):
+  cur = by_ym[ym]
+  d_ust = None
+  if i > 0:
+   py, pm = map(int, yms[i - 1].split('-'))
+   ey, em = py + (pm == 12), pm % 12 + 1
+   if ym == f'{ey:04d}-{em:02d}':
+    d_ust = round(cur['ust'] - by_ym[yms[i - 1]]['ust'], 2)
+  monthly.append({
+   'period': ym,
+   'through_date': cur['period'],
+   'ust': cur['ust'],
+   'total': cur['total'],
+   'd_ust': d_ust,
+  })
+ latest = hist[-1]
+ metrics = [
+  {
+   'id': 'h41_custody_ust',
+   'name': '美联储托管外国官方美债',
+   'value': latest['ust'],
+   'unit': '亿美元',
+   'kind': '周频官方托管存量',
+   'note': '美联储 H.4.1 表 RESH4FG_N.WW（周三日终存量），滞后仅约 3 天，是 TIC 外国官方美债存量的核心高频同步锚。',
+  },
+  {
+   'id': 'h41_custody_total',
+   'name': '美联储托管外国官方证券合计',
+   'value': latest['total'],
+   'unit': '亿美元',
+   'kind': '周频官方托管存量',
+   'note': '涵盖外国央行及国际组织在纽约联储托管的可流通美债、机构债与 MBS。',
+  },
+ ]
+ if len(hist) >= 5:
+  metrics.append({
+   'id': 'h41_custody_4w_chg',
+   'name': '近 4 周官方托管美债变动',
+   'value': round(latest['ust'] - hist[-5]['ust'], 2),
+   'unit': '亿美元',
+   'kind': '周频滚动变动',
+   'note': '最新周三较 4 周前同口径存量差值；负值代表外国官方托管账户净减持或到期不续作。',
+  })
+ return {'period': latest['period'], 'metrics': metrics, 'history': hist[-60:], 'monthly': monthly}
+
+
+def _opt_pos_num(val):
+ if val in (None, '', 'null', 'None', 'ND'):
+  return None
+ return number(val)
+
+
+def parse_ust_auctions(raw):
+ obj = json.loads(raw.decode('utf-8-sig'))
+ fd_rows = []
+ td_rows = []
+ if isinstance(obj, dict) and ('fiscaldata' in obj or 'treasurydirect' in obj):
+  fd_obj = obj.get('fiscaldata') or {}
+  fd_rows = fd_obj.get('data') or [] if isinstance(fd_obj, dict) else []
+  td_rows = obj.get('treasurydirect') or []
+ elif isinstance(obj, dict) and isinstance(obj.get('data'), list):
+  fd_rows = obj['data']
+ elif isinstance(obj, list):
+  td_rows = obj
+ else:
+  raise ValueError('US Treasury auctions JSON schema unrecognized')
+
+ today_iso = datetime.now(timezone.utc).date().isoformat()
+ dedup = {}
+ for r in fd_rows:
+  st = str(r.get('security_type') or '').strip()
+  if st not in ('Note', 'Bond'):
+   continue
+  ad = str(r.get('auction_date') or '').strip()[:10]
+  if not ad or ad > today_iso:
+   continue
+  comp = _opt_pos_num(r.get('comp_accepted'))
+  ind = _opt_pos_num(r.get('indirect_bidder_accepted'))
+  pd = _opt_pos_num(r.get('primary_dealer_accepted'))
+  if comp is None or ind is None or pd is None or comp <= 0:
+   continue
+  fima = _opt_pos_num(r.get('fima_noncomp_accepted')) or 0.0
+  p = period_ok(ad)
+  cusip = str(r.get('cusip') or '').strip()
+  term = str(r.get('security_term') or '').strip()
+  comp_yi, ind_yi, pd_yi, fima_yi = comp / 1e8, ind / 1e8, pd / 1e8, fima / 1e8
+  if not (0 < comp_yi < 50_000 and 0 <= ind_yi <= comp_yi * 1.02 and 0 <= pd_yi <= comp_yi * 1.02):
+   raise ValueError('FiscalData auction range guard failed')
+  key = (cusip or f'{p}:{st}:{term}', p)
+  dedup[key] = {
+   'cusip': cusip,
+   'auction_date': p,
+   'security_type': st,
+   'security_term': term,
+   'comp_amt': comp_yi,
+   'indirect_amt': ind_yi,
+   'primary_dealer_amt': pd_yi,
+   'fima_amt': fima_yi,
+  }
+
+ for r in td_rows:
+  st = str(r.get('securityType') or '').strip()
+  if st not in ('Note', 'Bond'):
+   continue
+  ad = str(r.get('competitiveAuctionCloseDate') or r.get('auctionDate') or '').strip()[:10]
+  if not ad or ad > today_iso:
+   continue
+  comp = _opt_pos_num(r.get('subtotalCompetitiveParAwardedInsideOfOfferingAmount') or r.get('competitiveAccepted'))
+  ind = _opt_pos_num(r.get('indirectBiddersCompetitiveParAwarded') or r.get('indirectBidderAccepted'))
+  pd = _opt_pos_num(r.get('primaryDealersCompetitiveParAwarded') or r.get('primaryDealerAccepted'))
+  if comp is None or ind is None or pd is None or comp <= 0:
+   continue
+  fima = _opt_pos_num(r.get('fimaNoncompetitiveParAwarded') or r.get('fimaNoncompetitiveAccepted')) or 0.0
+  p = period_ok(ad)
+  cusip = str(r.get('cusip') or '').strip()
+  term = str(r.get('securityTerm') or '').strip()
+  comp_yi, ind_yi, pd_yi, fima_yi = comp / 1e8, ind / 1e8, pd / 1e8, fima / 1e8
+  if not (0 < comp_yi < 50_000 and 0 <= ind_yi <= comp_yi * 1.02 and 0 <= pd_yi <= comp_yi * 1.02):
+   raise ValueError('TreasuryDirect auction range guard failed')
+  key = (cusip or f'{p}:{st}:{term}', p)
+  dedup[key] = {
+   'cusip': cusip,
+   'auction_date': p,
+   'security_type': st,
+   'security_term': term,
+   'comp_amt': comp_yi,
+   'indirect_amt': ind_yi,
+   'primary_dealer_amt': pd_yi,
+   'fima_amt': fima_yi,
+  }
+
+ if not dedup:
+  raise ValueError('US Treasury coupon auction rows empty')
+
+ auctions = sorted(dedup.values(), key=lambda x: (x['auction_date'], x['cusip']))
+ by_ym = {}
+ for a in auctions:
+  ym = a['auction_date'][:7]
+  b = by_ym.setdefault(ym, {
+   'period': ym,
+   'through_date': a['auction_date'],
+   'auction_count': 0,
+   'comp_amt': 0.0,
+   'indirect_amt': 0.0,
+   'primary_dealer_amt': 0.0,
+   'fima_amt': 0.0,
+  })
+  if a['auction_date'] > b['through_date']:
+   b['through_date'] = a['auction_date']
+  b['auction_count'] += 1
+  b['comp_amt'] += a['comp_amt']
+  b['indirect_amt'] += a['indirect_amt']
+  b['primary_dealer_amt'] += a['primary_dealer_amt']
+  b['fima_amt'] += a['fima_amt']
+
+ monthly = []
+ for ym in sorted(by_ym):
+  b = by_ym[ym]
+  comp_amt = b['comp_amt']
+  ind_sh = b['indirect_amt'] / comp_amt * 100.0 if comp_amt > 0 else 0.0
+  pd_sh = b['primary_dealer_amt'] / comp_amt * 100.0 if comp_amt > 0 else 0.0
+  monthly.append({
+   'period': ym,
+   'through_date': b['through_date'],
+   'auction_count': b['auction_count'],
+   'comp_amt': round(comp_amt, 2),
+   'indirect_amt': round(b['indirect_amt'], 2),
+   'primary_dealer_amt': round(b['primary_dealer_amt'], 2),
+   'fima_amt': round(b['fima_amt'], 2),
+   'indirect_share': round(ind_sh, 2),
+   'primary_dealer_share': round(pd_sh, 2),
+  })
+
+ latest_m = monthly[-1]
+ latest_date = auctions[-1]['auction_date']
+ tag = '（月初至今）' if latest_m['auction_count'] < 7 else ''
+ metrics = [
+  {
+   'id': 'ust_indirect_share',
+   'name': f'美债附息拍卖海外间接获配占比{tag}',
+   'value': latest_m['indirect_share'],
+   'unit': '%',
+   'kind': '一级市场外资需求指标',
+   'note': '美国财政部中长期附息国债（Note & Bond）拍卖中 Indirect Bidders 获配占比；外国央行与海外机构主要经此通道认购。',
+  },
+  {
+   'id': 'ust_indirect_amt',
+   'name': f'美债附息拍卖海外间接获配额{tag}',
+   'value': latest_m['indirect_amt'],
+   'unit': '亿美元',
+   'kind': '一级市场获配规模',
+   'note': f"{latest_m['period']} 已完成 {latest_m['auction_count']} 场附息国债拍卖累计获配额（截至 {latest_date}）。",
+  },
+  {
+   'id': 'ust_pd_share',
+   'name': f'美债拍卖一级交易商兜底占比{tag}',
+   'value': latest_m['primary_dealer_share'],
+   'unit': '%',
+   'kind': '一级市场承接压力指标',
+   'note': 'Primary Dealers 被动承接比例越高，通常意味着海外与终端买盘认购意愿越弱。',
+  },
+ ]
+ recent = [
+  {
+   'auction_date': a['auction_date'],
+   'security_type': a['security_type'],
+   'security_term': a['security_term'],
+   'comp_amt': round(a['comp_amt'], 2),
+   'indirect_amt': round(a['indirect_amt'], 2),
+   'indirect_share': round(a['indirect_amt'] / a['comp_amt'] * 100.0, 2),
+   'primary_dealer_share': round(a['primary_dealer_amt'] / a['comp_amt'] * 100.0, 2),
+  }
+  for a in auctions[-15:]
+ ]
+ return {'period': latest_date, 'metrics': metrics, 'history': monthly[-38:], 'recent_auctions': recent}
+
+
+def _solve_linear(A, b):
+ n = len(b)
+ M = [list(map(float, A[i])) + [float(b[i])] for i in range(n)]
+ for col in range(n):
+  piv = max(range(col, n), key=lambda r: abs(M[r][col]))
+  if abs(M[piv][col]) < 1e-12:
+   return [0.0] * n
+  M[col], M[piv] = M[piv], M[col]
+  div = M[col][col]
+  for j in range(col, n + 1):
+   M[col][j] /= div
+  for r in range(n):
+   if r != col and M[r][col] != 0.0:
+    fac = M[r][col]
+    for j in range(col, n + 1):
+     M[r][j] -= fac * M[col][j]
+ return [M[i][n] for i in range(n)]
+
+
+def _fit_nonneg_ridge(X, y, lam=8.0):
+ n = len(y)
+ p = len(X[0])
+ y_mean = sum(y) / n
+ means = [sum(X[i][j] for i in range(n)) / n for j in range(p)]
+ stds = []
+ for j in range(p):
+  var = sum((X[i][j] - means[j]) ** 2 for i in range(n)) / max(1, n)
+  stds.append(math.sqrt(var) if var > 1e-9 else 1.0)
+ Z = [[(X[i][j] - means[j]) / stds[j] for j in range(p)] for i in range(n)]
+ yc = [y[i] - y_mean for i in range(n)]
+
+ active = list(range(p))
+ w = [0.0] * p
+ for _ in range(p + 1):
+  if not active:
+   w = [0.0] * p
+   break
+  k = len(active)
+  A = [[0.0] * k for _ in range(k)]
+  rhs = [0.0] * k
+  for a_idx, ja in enumerate(active):
+   rhs[a_idx] = sum(Z[i][ja] * yc[i] for i in range(n))
+   for b_idx, jb in enumerate(active):
+    A[a_idx][b_idx] = sum(Z[i][ja] * Z[i][jb] for i in range(n)) + (lam if a_idx == b_idx else 0.0)
+  sol = _solve_linear(A, rhs)
+  w = [0.0] * p
+  neg_found = False
+  for a_idx, ja in enumerate(active):
+   if sol[a_idx] < 0.0:
+    neg_found = True
+   else:
+    w[ja] = sol[a_idx]
+  if not neg_found:
+   break
+  active = [j for j in active if w[j] > 0.0]
+ return {'y_mean': y_mean, 'means': means, 'stds': stds, 'weights': w}
+
+
+def _predict_nonneg_ridge(model, x):
+ z = [(x[j] - model['means'][j]) / model['stds'][j] for j in range(len(x))]
+ return model['y_mean'] + sum(model['weights'][j] * z[j] for j in range(len(x)))
+
+
+def compute_nowcast(sources):
+ tic_tx = sources.get('tic_transactions') or {}
+ tic_hold = sources.get('tic_holdings') or {}
+ h41 = sources.get('fed_h41_custody') or {}
+ auc = sources.get('ust_auctions') or {}
+ vix_src = sources.get('cboe_vix') or {}
+
+ tx_hist = tic_tx.get('history') or []
+ hold_hist = tic_hold.get('history') or []
+ h41_monthly = h41.get('monthly') or []
+ auc_monthly = auc.get('history') or []
+
+ if len(tx_hist) < 6 or not hold_hist or (not h41_monthly and not auc_monthly):
+  return {'status': 'unavailable', 'months': []}
+
+ anchor_period = tx_hist[-1]['period']
+ h41_by_ym = {r['period']: r for r in h41_monthly}
+ auc_by_ym = {r['period']: r for r in auc_monthly}
+ hold_by_ym = {r['period']: r for r in hold_hist if r.get('official') is not None}
+
+ vix_by_ym = {}
+ for r in (vix_src.get('history') or []):
+  ym = r['period'][:7]
+  vix_by_ym.setdefault(ym, []).append(r['vix'])
+ vix_month_avg = {ym: sum(vs) / len(vs) for ym, vs in vix_by_ym.items() if vs}
+
+ target_yms = sorted({
+  ym for ym in (set(h41_by_ym) | set(auc_by_ym))
+  if ym > anchor_period
+ })
+ if not target_yms:
+  return {
+   'status': 'up_to_date',
+   'anchor_period': anchor_period,
+   'months': [],
+  }
+
+ # 1) Official US Treasury Holdings Bridge: d(TIC_Official) = alpha + beta * d(H41_UST)
+ hold_yms = sorted(hold_by_ym)
+ off_pairs = []
+ for i in range(1, len(hold_yms)):
+  ym, pym = hold_yms[i], hold_yms[i - 1]
+  if ym > anchor_period:
+   continue
+  py, pm = map(int, pym.split('-'))
+  if ym != f'{py + (pm == 12):04d}-{pm % 12 + 1:02d}':
+   continue
+  h_rec = h41_by_ym.get(ym)
+  if h_rec and h_rec.get('d_ust') is not None:
+   dy = hold_by_ym[ym]['official'] - hold_by_ym[pym]['official']
+   off_pairs.append((ym, h_rec['d_ust'], dy))
+
+ def _fit_off(pairs):
+  if len(pairs) < 4:
+   return 0.0, 0.80
+  mx = sum(p[1] for p in pairs) / len(pairs)
+  my = sum(p[2] for p in pairs) / len(pairs)
+  vx = sum((p[1] - mx) ** 2 for p in pairs)
+  cov = sum((p[1] - mx) * (p[2] - my) for p in pairs)
+  beta_raw = cov / vx if vx > 1e-6 else 0.80
+  beta = max(0.55, min(1.35, beta_raw))
+  alpha = 0.5 * (my - beta * mx)
+  return alpha, beta
+
+ off_alpha, off_beta = _fit_off(off_pairs)
+ if len(off_pairs) >= 5:
+  loo_errs_off = []
+  for i in range(len(off_pairs)):
+   sub = off_pairs[:i] + off_pairs[i + 1:]
+   a_i, b_i = _fit_off(sub)
+   pred_i = a_i + b_i * off_pairs[i][1]
+   loo_errs_off.append(off_pairs[i][2] - pred_i)
+  off_rmse = math.sqrt(sum(e * e for e in loo_errs_off) / len(loo_errs_off))
+ else:
+  off_rmse = 415.0
+
+ # 2) Global Foreign Net Long-Term Securities Bridge (Bond + Equity = Total)
+ full_aucs = [r['comp_amt'] for r in auc_monthly if r['auction_count'] >= 7 and r['period'] <= anchor_period]
+ mean_full_comp = sum(full_aucs) / len(full_aucs) if full_aucs else 3100.0
+
+ def _auc_features(a_rec):
+  equiv_ind = a_rec['indirect_amt'] * (mean_full_comp / a_rec['comp_amt']) if a_rec['comp_amt'] > 0 else a_rec['indirect_amt']
+  return [
+   a_rec['indirect_share'],
+   -a_rec['primary_dealer_share'],
+   equiv_ind,
+  ]
+
+ flow_samples = []
+ for idx, tx in enumerate(tx_hist):
+  ym = tx['period']
+  a_rec = auc_by_ym.get(ym)
+  if not a_rec:
+   continue
+  prev_eq = [tx_hist[j]['equity'] for j in range(max(0, idx - 6), idx)]
+  prev_eq24 = [tx_hist[j]['equity'] for j in range(max(0, idx - 24), idx)]
+  eq_base = (
+   0.55 * (sum(prev_eq) / len(prev_eq)) + 0.45 * (sum(prev_eq24) / len(prev_eq24))
+   if prev_eq else tx['equity']
+  )
+  h_d = h41_by_ym[ym]['d_ust'] if ym in h41_by_ym and h41_by_ym[ym].get('d_ust') is not None else None
+  flow_samples.append({
+   'period': ym,
+   'x': _auc_features(a_rec),
+   'h41_d': h_d,
+   'bond': tx['bond'],
+   'equity': tx['equity'],
+   'eq_base': eq_base,
+   'total': tx['total'],
+  })
+
+ gamma_h41 = 0.35
+
+ def _fit_bond(samples):
+  X = [s['x'] for s in samples]
+  h_vals = [s['h41_d'] for s in samples if s['h41_d'] is not None]
+  h_mean = sum(h_vals) / len(h_vals) if h_vals else 0.0
+  y_adj = [
+   s['bond'] - (gamma_h41 * (s['h41_d'] - h_mean) if s['h41_d'] is not None else 0.0)
+   for s in samples
+  ]
+  ridge = _fit_nonneg_ridge(X, y_adj, lam=8.0)
+  return ridge, h_mean
+
+ def _pred_bond(ridge, h_mean, x_vec, h_d):
+  base = _predict_nonneg_ridge(ridge, x_vec)
+  if h_d is not None:
+   base += gamma_h41 * (h_d - h_mean)
+  return base
+
+ if len(flow_samples) >= 6:
+  bond_ridge, h41_mean_d = _fit_bond(flow_samples)
+  bond_loo_errs = []
+  total_loo_errs = []
+  for i in range(len(flow_samples)):
+   sub = flow_samples[:i] + flow_samples[i + 1:]
+   r_i, hm_i = _fit_bond(sub)
+   s_i = flow_samples[i]
+   b_hat = _pred_bond(r_i, hm_i, s_i['x'], s_i['h41_d'])
+   bond_loo_errs.append(s_i['bond'] - b_hat)
+   if i >= 3:
+    total_loo_errs.append(s_i['total'] - (b_hat + s_i['eq_base']))
+  bond_rmse = math.sqrt(sum(e * e for e in bond_loo_errs) / len(bond_loo_errs))
+  total_rmse = (
+   math.sqrt(sum(e * e for e in total_loo_errs) / len(total_loo_errs))
+   if total_loo_errs else bond_rmse * 1.25
+  )
+ else:
+  bond_ridge, h41_mean_d = None, 0.0
+  bond_rmse, total_rmse = 520.0, 680.0
+
+ eq_tail6 = [r['equity'] for r in tx_hist[-6:]]
+ eq_tail24 = [r['equity'] for r in tx_hist[-24:]]
+ eq_anchor = 0.55 * (sum(eq_tail6) / len(eq_tail6)) + 0.45 * (sum(eq_tail24) / len(eq_tail24))
+ mean_bond_hist = sum(r['bond'] for r in tx_hist[-12:]) / min(12, len(tx_hist))
+
+ anchor_off = hold_by_ym.get(anchor_period, {}).get('official')
+ if anchor_off is None and hold_hist:
+  anchor_off = hold_hist[-1].get('official')
+ running_off = anchor_off
+
+ z80 = 1.28155
+ months_out = []
+ for step_idx, ym in enumerate(target_yms, start=1):
+  a_rec = auc_by_ym.get(ym)
+  h_rec = h41_by_ym.get(ym)
+  is_partial_auc = bool(a_rec and a_rec['auction_count'] < 7) or (a_rec is None)
+  is_partial_h41 = bool(h_rec and int(h_rec['through_date'].split('-')[2]) < 24)
+  is_partial = is_partial_auc or is_partial_h41
+
+  h_d = h_rec['d_ust'] if h_rec and h_rec.get('d_ust') is not None else None
+  if a_rec and bond_ridge is not None:
+   bond_est = _pred_bond(bond_ridge, h41_mean_d, _auc_features(a_rec), h_d)
+  elif h_d is not None:
+   bond_est = mean_bond_hist + gamma_h41 * (h_d - h41_mean_d)
+  else:
+   bond_est = mean_bond_hist
+
+  vix_m = vix_month_avg.get(ym)
+  vix_drag = -12.0 * max(0.0, vix_m - 20.0) if vix_m is not None else 0.0
+  eq_est = eq_anchor + vix_drag
+  tot_est = bond_est + eq_est
+
+  mult = 1.18 if is_partial_auc else 1.0
+  bond_half80 = z80 * bond_rmse * mult
+  tot_half80 = z80 * total_rmse * mult
+
+  off_est, off_low80, off_high80, off_chg = None, None, None, None
+  if running_off is not None and h_d is not None:
+   off_chg = off_alpha + off_beta * h_d
+   running_off = running_off + off_chg
+   off_half80 = z80 * math.sqrt(step_idx) * off_rmse * (1.10 if is_partial_h41 else 1.0)
+   off_est = round(running_off, 1)
+   off_low80 = round(running_off - off_half80, 1)
+   off_high80 = round(running_off + off_half80, 1)
+   off_chg = round(off_chg, 1)
+
+  through_candidates = [d for d in [
+   a_rec['through_date'] if a_rec else None,
+   h_rec['through_date'] if h_rec else None,
+  ] if d]
+  through_date = max(through_candidates) if through_candidates else ym
+
+  months_out.append({
+   'period': ym,
+   'label': f'{ym} 月初至今估算' if is_partial else f'{ym} 高频估算',
+   'through_date': through_date,
+   'is_partial_month': is_partial,
+   'auction_count': a_rec['auction_count'] if a_rec else 0,
+   'comp_amt': a_rec['comp_amt'] if a_rec else None,
+   'indirect_amt': a_rec['indirect_amt'] if a_rec else None,
+   'indirect_share': a_rec['indirect_share'] if a_rec else None,
+   'primary_dealer_share': a_rec['primary_dealer_share'] if a_rec else None,
+   'h41_through_date': h_rec['through_date'] if h_rec else None,
+   'h41_custody_ust': h_rec['ust'] if h_rec else None,
+   'h41_d_ust': h_d,
+   'bond': round(bond_est, 1),
+   'bond_low80': round(bond_est - bond_half80, 1),
+   'bond_high80': round(bond_est + bond_half80, 1),
+   'equity': round(eq_est, 1),
+   'total': round(tot_est, 1),
+   'total_low80': round(tot_est - tot_half80, 1),
+   'total_high80': round(tot_est + tot_half80, 1),
+   'official_holdings': off_est,
+   'official_low80': off_low80,
+   'official_high80': off_high80,
+   'official_chg': off_chg,
+  })
+
+ return {
+  'status': 'ok',
+  'anchor_period': anchor_period,
+  'latest_h41_date': h41.get('period'),
+  'latest_auction_date': auc.get('period'),
+  'next_tic_release_hint': '美国财政部通常于每月月中（约第 15–18 日）发布滞后两个月的 TIC 正式月报；新月报落地后，本估算窗口自动向后顺延。',
+  'country_boundary_note': '美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 9—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。',
+  'methodology': (
+   '双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；'
+   '② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），'
+   '叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间。'
+  ),
+  'validation': {
+   'ci_level': 0.80,
+   'official_holdings_loocv_rmse': round(off_rmse, 1),
+   'official_beta_h41': round(off_beta, 3),
+   'official_overlap_months': len(off_pairs),
+   'bond_flow_loocv_rmse': round(bond_rmse, 1),
+   'total_flow_loocv_rmse': round(total_rmse, 1),
+   'flow_overlap_months': len(flow_samples),
+  },
+  'months': months_out,
+ }
+
+
 PARSERS = {
  'ecb_fx': parse_ecb,
  'us_treasury_yield': parse_us_yield,
@@ -522,6 +1119,8 @@ PARSERS = {
  'cboe_vix': parse_vix,
  'tic_holdings': parse_holdings,
  'tic_transactions': parse_transactions,
+ 'fed_h41_custody': parse_fed_h41,
+ 'ust_auctions': parse_ust_auctions,
 }
 
 
@@ -529,13 +1128,13 @@ def fetch_raw_url(url):
  req = Request(
   url,
   headers={
-   'User-Agent': 'CapitalFlowLab/2.2 public-research; stdlib HTTP',
+   'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) CapitalFlowLab/2.3',
    'Accept': 'application/json, text/csv, text/plain, application/xml, text/xml, */*',
   },
  )
  with urlopen(req, timeout=25) as r:
-  raw = r.read(4_000_001)
-  if len(raw) > 4_000_000:
+  raw = r.read(6_000_001)
+  if len(raw) > 6_000_000:
    raise ValueError('Source too large; parser review required')
   src_host = url.split('/')[2]
   allowed = {src_host}
@@ -550,6 +1149,8 @@ def fetch_one(key, previous=None, fixture_dir=None):
  spec = dict(SOURCES[key])
  if key == 'us_treasury_yield':
   spec['url'] = us_yield_url()
+ elif key == 'ust_auctions':
+  spec['url'] = ust_auctions_fiscal_url()
  attempt = utcnow()
  result = {**(previous or {}), **spec, 'id': key, 'last_attempt_at': attempt}
  try:
@@ -562,6 +1163,8 @@ def fetch_one(key, previous=None, fixture_dir=None):
     'cboe_vix': 'vix.raw',
     'tic_holdings': 'tic.raw',
     'tic_transactions': 'tic_transactions.raw',
+    'fed_h41_custody': 'fed_h41.raw',
+    'ust_auctions': 'ust_auctions.raw',
    }
    raw = (Path(fixture_dir) / names[key]).read_bytes()
    parsed = PARSERS[key](raw)
@@ -575,6 +1178,14 @@ def fetch_one(key, previous=None, fixture_dir=None):
     parsed = PARSERS[key](raw)
     spec['url'] = us_yield_url(yr - 1)
     result['url'] = spec['url']
+  elif key == 'ust_auctions':
+   raw_fd = fetch_raw_url(ust_auctions_fiscal_url())
+   raw_td = fetch_raw_url(UST_AUCTIONS_RECENT_URL)
+   raw = json.dumps({
+    'fiscaldata': json.loads(raw_fd.decode('utf-8-sig')),
+    'treasurydirect': json.loads(raw_td.decode('utf-8-sig')),
+   }, separators=(',', ':')).encode('utf-8')
+   parsed = PARSERS[key](raw)
   else:
    raw = fetch_raw_url(spec['url'])
    parsed = PARSERS[key](raw)
@@ -616,15 +1227,17 @@ def update(fixture_dir=None):
   except (OSError, ValueError):
    previous = {}
   sources = previous.get('sources', {})
-  with ThreadPoolExecutor(max_workers=4) as ex:
+  with ThreadPoolExecutor(max_workers=5) as ex:
    jobs = {k: ex.submit(fetch_one, k, sources.get(k), fixture_dir) for k in SOURCES}
    current = {k: j.result() for k, j in jobs.items()}
+  nowcast = compute_nowcast(current)
   out = {
    'schema_version': 1,
    'generated_at': utcnow(),
-   'site_version': '2.2.0',
-   'observation_policy': 'Daily market rates/prices and monthly cross-border transactions are strictly separated. No flow is fabricated from price or holdings changes.',
+   'site_version': '2.3.0',
+   'observation_policy': 'Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.',
    'sources': current,
+   'nowcast': nowcast,
   }
   atomic_json(dest, out)
   return out

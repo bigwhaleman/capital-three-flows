@@ -9,6 +9,9 @@ from update_data import (
  parse_cn_yield,
  parse_sofr,
  parse_vix,
+ parse_fed_h41,
+ parse_ust_auctions,
+ compute_nowcast,
 )
 
 class ExpandedDataTests(unittest.TestCase):
@@ -53,3 +56,95 @@ class ExpandedDataTests(unittest.TestCase):
   ecb=parse_ecb(b'<Envelope><Cube><Cube time="2026-11-13"><Cube currency="USD" rate="1.1052"/><Cube currency="JPY" rate="176.83"/><Cube currency="GBP" rate="0.83559"/><Cube currency="CAD" rate="1.5758"/><Cube currency="SEK" rate="11.1075"/><Cube currency="CHF" rate="0.9266"/><Cube currency="CNY" rate="7.3738"/><Cube currency="HKD" rate="8.6714"/></Cube></Cube></Envelope>')
   self.assertEqual(len(ecb['metrics']),3)
   self.assertTrue(90<ecb['metrics'][2]['value']<120)
+
+ def test_fed_h41_parser_and_monthly_custody_delta(self):
+  csv_raw=(
+   '"Series Description","Total","UST","Agency"\n'
+   '"Unit:","Currency","Currency","Currency"\n'
+   '"Time Period","RESH4F_N.WW","RESH4FG_N.WW","RESH4FA_N.WW"\n'
+   '2026-08-26,2880000,2615200,200000\n'
+   '2026-09-30,2850000,2582350,198000\n'
+   '2026-10-07,2845000,2579000,197500\n'
+   '2026-10-28,2838071,2568597,196672\n'
+   '2026-11-11,2793613,2524189,196672\n'
+  ).encode('utf-8')
+  d=parse_fed_h41(csv_raw)
+  self.assertEqual(d['period'],'2026-11-11')
+  self.assertEqual(len(d['metrics']),3)
+  self.assertAlmostEqual(d['metrics'][0]['value'],25241.89)
+  by_ym={m['period']:m for m in d['monthly']}
+  self.assertAlmostEqual(by_ym['2026-09']['d_ust'],25823.50-26152.00)
+  self.assertAlmostEqual(by_ym['2026-11']['d_ust'],25241.89-25685.97)
+  with self.assertRaises(ValueError):
+   parse_fed_h41(b'bad,header\n2026-11-11,1,2\n')
+
+ def test_ust_auctions_hybrid_merge_null_guard_and_dedup(self):
+  import json
+  payload={
+   'fiscaldata':{'data':[
+    {'cusip':'912810UW6','auction_date':'2026-10-08','security_type':'Bond','security_term':'30-Year','comp_accepted':'20000000000','indirect_bidder_accepted':'13000000000','primary_dealer_accepted':'2000000000','fima_noncomp_accepted':'0'},
+    {'cusip':'91282CRR4','auction_date':'2026-10-22','security_type':'Note','security_term':'5-Year','comp_accepted':'null','indirect_bidder_accepted':'null','primary_dealer_accepted':'null','fima_noncomp_accepted':'null'},
+   ]},
+   'treasurydirect':[
+    {'cusip':'912810UW6','competitiveAuctionCloseDate':'2026-10-08T00:00:00','securityType':'Bond','securityTerm':'30-Year','subtotalCompetitiveParAwardedInsideOfOfferingAmount':'20000000000','indirectBiddersCompetitiveParAwarded':'13000000000','primaryDealersCompetitiveParAwarded':'2000000000','fimaNoncompetitiveParAwarded':'0'},
+    {'cusip':'91282CRR4','competitiveAuctionCloseDate':'2026-10-22T00:00:00','securityType':'Note','securityTerm':'5-Year','subtotalCompetitiveParAwardedInsideOfOfferingAmount':'30000000000','indirectBiddersCompetitiveParAwarded':'18000000000','primaryDealersCompetitiveParAwarded':'4500000000','fimaNoncompetitiveParAwarded':'0'},
+    {'cusip':'912810UY2','competitiveAuctionCloseDate':'2026-11-12T00:00:00','securityType':'Bond','securityTerm':'30-Year','subtotalCompetitiveParAwardedInsideOfOfferingAmount':'25000000000','indirectBiddersCompetitiveParAwarded':'15000000000','primaryDealersCompetitiveParAwarded':'3000000000','fimaNoncompetitiveParAwarded':'0'},
+   ]
+  }
+  d=parse_ust_auctions(json.dumps(payload).encode('utf-8'))
+  self.assertEqual(d['period'],'2026-11-12')
+  by_ym={m['period']:m for m in d['history']}
+  self.assertEqual(by_ym['2026-10']['auction_count'],2)
+  self.assertAlmostEqual(by_ym['2026-10']['comp_amt'],500.0)
+  self.assertAlmostEqual(by_ym['2026-10']['indirect_share'],62.0)
+  self.assertEqual(by_ym['2026-11']['auction_count'],1)
+  self.assertIn('月初至今',d['metrics'][0]['name'])
+
+ def test_nowcast_sign_monotonicity_intervals_and_auto_handoff(self):
+  months=['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08']
+  tx_hist=[]
+  hold_hist=[]
+  h41_m=[]
+  auc_m=[]
+  for i,ym in enumerate(months):
+   sh=60.0+(i%4)*1.8
+   pd_sh=15.0-(i%4)*1.1
+   d_u=-150.0+i*40.0
+   bond=300.0+(sh-60.0)*120.0+0.4*d_u
+   eq=500.0+(i%3)*40.0
+   tx_hist.append({'period':ym,'total':bond+eq,'equity':eq,'bond':bond})
+   hold_hist.append({'period':ym,'official':37000.0+i*80.0,'world':90000.0+i*150.0})
+   h41_m.append({'period':ym,'through_date':ym+'-28','ust':26000.0+i*60.0,'total':28500.0,'d_ust':d_u})
+   auc_m.append({'period':ym,'through_date':ym+'-28','auction_count':8,'comp_amt':3200.0,'indirect_amt':3200.0*sh/100.0,'primary_dealer_amt':3200.0*pd_sh/100.0,'fima_amt':0.0,'indirect_share':sh,'primary_dealer_share':pd_sh})
+  # Add 2026-09 (stronger) vs 2026-10 (weaker indirect share & deeper H.4.1 outflow)
+  h41_m.extend([
+   {'period':'2026-09','through_date':'2026-09-30','ust':26200.0,'total':28400.0,'d_ust':-100.0},
+   {'period':'2026-10','through_date':'2026-10-28','ust':25700.0,'total':27900.0,'d_ust':-500.0},
+  ])
+  auc_m.extend([
+   {'period':'2026-09','through_date':'2026-09-30','auction_count':8,'comp_amt':3200.0,'indirect_amt':2080.0,'primary_dealer_amt':352.0,'fima_amt':0.0,'indirect_share':65.0,'primary_dealer_share':11.0},
+   {'period':'2026-10','through_date':'2026-10-29','auction_count':8,'comp_amt':3200.0,'indirect_amt':1856.0,'primary_dealer_amt':544.0,'fima_amt':0.0,'indirect_share':58.0,'primary_dealer_share':17.0},
+  ])
+  sources={
+   'tic_transactions':{'history':tx_hist},
+   'tic_holdings':{'history':hold_hist},
+   'fed_h41_custody':{'period':'2026-10-28','monthly':h41_m},
+   'ust_auctions':{'period':'2026-10-29','history':auc_m},
+   'cboe_vix':{'history':[{'period':'2026-09-15','vix':18.0},{'period':'2026-10-15','vix':18.0}]},
+  }
+  nc=compute_nowcast(sources)
+  self.assertEqual(nc['status'],'ok')
+  self.assertEqual([m['period'] for m in nc['months']],['2026-09','2026-10'])
+  m9,m10=nc['months']
+  self.assertGreater(m9['bond'],m10['bond'])
+  self.assertGreater(m9['total'],m10['total'])
+  self.assertLess(m9['total_low80'],m9['total'])
+  self.assertGreater(m9['total_high80'],m9['total'])
+  self.assertGreater(m9['official_holdings'],m10['official_holdings'])
+  # Simulate TIC advancing to 2026-09 -> nowcast automatically shifts to ['2026-10']
+  tx_hist.append({'period':'2026-09','total':1400.0,'equity':600.0,'bond':800.0})
+  hold_hist.append({'period':'2026-09','official':37450.0,'world':91200.0})
+  nc2=compute_nowcast(sources)
+  self.assertEqual([m['period'] for m in nc2['months']],['2026-10'])
+
+if __name__=='__main__':unittest.main()

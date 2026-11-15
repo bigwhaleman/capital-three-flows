@@ -46,7 +46,7 @@ const ID_SPECS = [
   ['capUC', '中美直连单向通道上限', 50, 800, 10, '亿美元/月', '受互联互通、QFII/QDII 等渠道容量约束。']
 ];
 
-let state = { preset: 'base', p: config(), month: 1, chart: 'J', page: 'overview', htab: 'cnhk', theme: 'light' };
+let state = { preset: 'base', p: config(), month: 1, chart: 'J', page: 'overview', htab: 'cnhk', theme: 'light', showNowcast: true };
 let idState = { nU: -100, nC: 100, tol: 0, capR: 300, capUC: 400 };
 let rows = [], ev = null, sens = null, obs = null, archive = null, presetCache = null;
 let timer = null, redrawTimer, sensTimer, toastTimer, busy = false;
@@ -145,13 +145,14 @@ function syncControls() {
   $('#scenario-brief').textContent = PRESETS[state.preset].brief;
 }
 
-function chart(target, series, { min = null, max = null, includeZero = true, refLine = null, unit = '', selection = null, windows = [], height = 245, labels = null } = {}) {
+function chart(target, series, { min = null, max = null, includeZero = true, refLine = null, unit = '', selection = null, windows = [], bands = [], splitIndex = null, splitNote = '', height = 245, labels = null } = {}) {
   const el = $(target);
   if (!el) return;
   const tc = themeColors();
-  const width = Math.max(300, el.clientWidth || 560), W = width, H = height, l = 52, r = 14, t = 23, b = 30, n = series[0]?.values.length || 0;
+  const width = Math.max(300, el.clientWidth || 560), W = width, H = height, l = 54, r = 14, t = 24, b = 30, n = series[0]?.values.length || 0;
   if (!n) { el.innerHTML = '<p class="chart-empty">没有同口径的有效序列；未以情景数据代替。</p>'; return; }
-  const values = series.flatMap(s => s.values).filter(Number.isFinite);
+  const bandVals = bands.flatMap(bd => [...(bd.low || []), ...(bd.high || [])]).filter(Number.isFinite);
+  const values = [...series.flatMap(s => s.values).filter(Number.isFinite), ...bandVals];
   if (refLine !== null && Number.isFinite(refLine)) values.push(refLine);
   if (!values.length) { el.innerHTML = '<p class="chart-empty">当前分项暂无有效观测。</p>'; return; }
   let lo = min ?? (includeZero ? Math.min(0, ...values) : Math.min(...values));
@@ -161,10 +162,15 @@ function chart(target, series, { min = null, max = null, includeZero = true, ref
   if (min === null) lo = (!includeZero && Math.min(...values) >= 0) ? Math.max(0, lo - pad) : lo - pad;
   if (max === null) hi += (hi - lo) * .10;
   const x = i => l + i * (W - l - r) / Math.max(1, n - 1), y = v => t + (hi - v) * (H - t - b) / (hi - lo);
-  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(x => x.name).join('、') + '；' + unit)}"><text x="${l}" y="12" font-size="10" fill="${tc.axis}">${esc(unit)}</text>`;
+  const hasSplit = splitIndex !== null && splitIndex >= 0 && splitIndex < n - 1;
+  const rightNote = hasSplit ? (W < 460 ? '虚线:高频估算(80%区间)' : (splitNote || '实线:官方实测 ｜ 虚线+阴影:高频估算(80%区间)')) : '';
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(x => x.name).join('、') + '；' + unit)}"><text x="${l}" y="12" font-size="10" fill="${tc.axis}">${esc(unit)}</text>${rightNote ? `<text x="${W - r}" y="12" text-anchor="end" font-size="9.5" fill="${tc.blue}">${esc(rightNote)}</text>` : ''}`;
   for (const win of windows) {
     const a = win.start, z = win.end ?? n - 1;
     s += `<rect x="${x(a)}" y="${t}" width="${Math.max(1, x(z) - x(a))}" height="${H - t - b}" fill="${tc.winFill}" opacity=".09"/>`;
+  }
+  if (hasSplit) {
+    s += `<rect x="${x(splitIndex).toFixed(2)}" y="${t}" width="${Math.max(1, W - r - x(splitIndex)).toFixed(2)}" height="${H - t - b}" fill="${tc.blue}" opacity=".045"/>`;
   }
   for (let i = 0; i < 5; i++) {
     const v = lo + (hi - lo) * i / 4;
@@ -174,24 +180,73 @@ function chart(target, series, { min = null, max = null, includeZero = true, ref
   if (refLine !== null && refLine >= lo && refLine <= hi) {
     s += `<line x1="${l}" y1="${y(refLine)}" x2="${W - r}" y2="${y(refLine)}" stroke="${tc.amber}" stroke-width="1.4" stroke-dasharray="5 4"/>`;
   }
+  for (const bd of bands) {
+    let run = [];
+    const flushRun = () => {
+      if (run.length >= 2) {
+        const topPts = run.map(p => `${x(p.i).toFixed(2)},${y(p.hi).toFixed(2)}`).join(' ');
+        const botPts = [...run].reverse().map(p => `${x(p.i).toFixed(2)},${y(p.lo).toFixed(2)}`).join(' ');
+        const hiPath = run.map((p, idx) => `${idx ? 'L' : 'M'}${x(p.i).toFixed(2)} ${y(p.hi).toFixed(2)}`).join(' ');
+        const loPath = run.map((p, idx) => `${idx ? 'L' : 'M'}${x(p.i).toFixed(2)} ${y(p.lo).toFixed(2)}`).join(' ');
+        s += `<polygon class="ci-band" points="${topPts} ${botPts}" fill="${bd.color}" opacity="${bd.opacity ?? .15}"/>`;
+        s += `<path d="${hiPath}" fill="none" stroke="${bd.color}" stroke-width="1" stroke-opacity=".42" stroke-dasharray="2 3"/>`;
+        s += `<path d="${loPath}" fill="none" stroke="${bd.color}" stroke-width="1" stroke-opacity=".42" stroke-dasharray="2 3"/>`;
+      }
+      run = [];
+    };
+    for (let i = 0; i < n; i++) {
+      const lv = bd.low?.[i], hv = bd.high?.[i];
+      if (Number.isFinite(lv) && Number.isFinite(hv)) run.push({ i, lo: lv, hi: hv });
+      else flushRun();
+    }
+    flushRun();
+  }
+  if (hasSplit) {
+    s += `<line x1="${x(splitIndex).toFixed(2)}" y1="${t}" x2="${x(splitIndex).toFixed(2)}" y2="${H - b}" stroke="${tc.zero}" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+  }
   const stride = Math.max(1, Math.ceil((n - 1) / (W < 420 ? 4 : 6)));
   for (let i = 0; i < n; i++) if (i % stride === 0 || i === n - 1) {
-    s += `<text x="${x(i)}" y="${H - 7}" text-anchor="middle" font-size="9.5" fill="${tc.axis}" font-family="monospace">${esc(labels ? labels[i] : '+' + i + '月')}</text>`;
+    s += `<text x="${x(i)}" y="${H - 7}" text-anchor="middle" font-size="9.5" fill="${hasSplit && i > splitIndex ? tc.blue : tc.axis}" font-family="monospace">${esc(labels ? labels[i] : '+' + i + '月')}</text>`;
   }
   if (selection !== null) s += `<line x1="${x(selection)}" y1="${t}" x2="${x(selection)}" y2="${H - b}" stroke="${tc.zero}" stroke-dasharray="3 4"/>`;
   for (const line of series) {
-    let path = '', valid = false;
-    line.values.forEach((v, i) => {
-      if (!Number.isFinite(v)) { valid = false; return; }
-      path += (valid ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(v).toFixed(2) + ' ';
-      valid = true;
-    });
-    s += `<path d="${path}" fill="none" stroke="${line.color}" stroke-width="${line.width || 2.2}" stroke-linejoin="round" stroke-linecap="round" ${line.dash ? 'stroke-dasharray="4 4"' : ''}/>`;
-    const showDots = n <= 40;
+    if (hasSplit && !line.dash) {
+      let pSolid = '', vSolid = false;
+      for (let i = 0; i <= splitIndex; i++) {
+        const v = line.values[i];
+        if (!Number.isFinite(v)) { vSolid = false; continue; }
+        pSolid += (vSolid ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(v).toFixed(2) + ' ';
+        vSolid = true;
+      }
+      if (pSolid) s += `<path d="${pSolid}" fill="none" stroke="${line.color}" stroke-width="${line.width || 2.2}" stroke-linejoin="round" stroke-linecap="round"/>`;
+      let pDash = '', vDash = false;
+      for (let i = splitIndex; i < n; i++) {
+        const v = line.values[i];
+        if (!Number.isFinite(v)) { vDash = false; continue; }
+        pDash += (vDash ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(v).toFixed(2) + ' ';
+        vDash = true;
+      }
+      if (pDash) s += `<path class="nowcast-dash" d="${pDash}" fill="none" stroke="${line.color}" stroke-width="${line.width || 2.2}" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 4"/>`;
+    } else {
+      let path = '', valid = false;
+      line.values.forEach((v, i) => {
+        if (!Number.isFinite(v)) { valid = false; return; }
+        path += (valid ? 'L' : 'M') + x(i).toFixed(2) + ' ' + y(v).toFixed(2) + ' ';
+        valid = true;
+      });
+      s += `<path d="${path}" fill="none" stroke="${line.color}" stroke-width="${line.width || 2.2}" stroke-linejoin="round" stroke-linecap="round" ${line.dash ? 'stroke-dasharray="4 4"' : ''}/>`;
+    }
+    const showDots = n <= 42;
     line.values.forEach((v, i) => {
       if (!Number.isFinite(v)) return;
       if (!showDots && i !== n - 1 && i !== selection) return;
-      s += `<circle cx="${x(i)}" cy="${y(v)}" r="${i === selection ? 4.2 : 2.3}" fill="${line.color}" opacity="${i === selection || i === n - 1 ? 1 : .68}"><title>${esc(line.name)} · ${esc(labels ? labels[i] : '第 ' + i + ' 月')}：${fmt(v, 3)} ${esc(unit)}</title></circle>`;
+      const isEst = hasSplit && i > splitIndex;
+      const tag = isEst ? ' [高频估算]' : '';
+      if (isEst) {
+        s += `<circle cx="${x(i)}" cy="${y(v)}" r="3.2" fill="var(--panel)" stroke="${line.color}" stroke-width="2"><title>${esc(line.name + tag)} · ${esc(labels ? labels[i] : '第 ' + i + ' 月')}：${fmt(v, 1)} ${esc(unit)}</title></circle>`;
+      } else {
+        s += `<circle cx="${x(i)}" cy="${y(v)}" r="${i === selection ? 4.2 : 2.3}" fill="${line.color}" opacity="${i === selection || i === n - 1 || i === splitIndex ? 1 : .68}"><title>${esc(line.name)} · ${esc(labels ? labels[i] : '第 ' + i + ' 月')}：${fmt(v, 3)} ${esc(unit)}</title></circle>`;
+      }
     });
   }
   el.innerHTML = s + '</svg>';
@@ -276,6 +331,9 @@ function evaluateChecklist() {
   const offDelta1m = holdH.length >= 2 && Number.isFinite(holdLast?.official) ? holdLast.official - holdH.at(-2).official : null;
 
   const worldTx = regionData('world').at(-1);
+  const ncMonths = obs?.nowcast?.months || [];
+  const ncLatest = ncMonths.at(-1) || null;
+  const h41CumDrop = ncMonths.reduce((acc, m) => acc + (Number.isFinite(m.h41_d_ust) ? m.h41_d_ust : 0), 0);
   const usDate = obs?.sources?.us_treasury_yield?.period || '—';
   const cnDate = obs?.sources?.cn_gov_yield?.period || '—';
   const sofrDate = obs?.sources?.nyfed_sofr?.period || '—';
@@ -314,26 +372,136 @@ function evaluateChecklist() {
       name: '④ 官方主权储备先行降敞口',
       why: '历史周期中，官方储备与长线机构通常先于私人套息盘调整美元久期',
       reading: Number.isFinite(cnHoldDelta12m) ? `${sgn(cnHoldDelta12m, 0)} 亿美元` : '—',
-      sub: `内地托管美债年变动 · 最新存量 ${fmt(holdLast?.cn, 0)} 亿 (${holdLast?.period || '—'})`,
+      sub: `内地托管美债年变动 (${holdLast?.period || '—'}) · H.4.1 近两月半 ${sgn(h41CumDrop, 0)} 亿`,
       target: '观察标尺：官方与内地托管存量趋势性压降',
-      detail: Number.isFinite(offDelta1m) ? `最新单月外国官方美债存量 ${sgn(offDelta1m, 0)} 亿美元` : '存量含价格重估与转托管',
+      detail: ncLatest && Number.isFinite(ncLatest.official_holdings)
+        ? `H.4.1 桥接估算 ${ncLatest.period} 外国官方存量再降至 ~${fmt(ncLatest.official_holdings, 0)} 亿`
+        : (Number.isFinite(offDelta1m) ? `最新单月外国官方美债存量 ${sgn(offDelta1m, 0)} 亿美元` : '存量含价格重估与转托管'),
       state: !Number.isFinite(cnHoldDelta12m) ? 'watch' : cnHoldDelta12m < -200 ? 'ok' : cnHoldDelta12m < 0 ? 'watch' : 'bad'
     },
     {
       name: '⑤ 全球私人买盘对美净流入降温',
       why: '只有私人套息盘不再大举净买入美股美债，广义美元池才会出现净释放',
-      reading: worldTx ? `${sgn(worldTx.total, 0)} 亿美元/月` : '—',
-      sub: `TIC 表 1 全球外资净买卖 · ${ticDate}`,
+      reading: worldTx
+        ? (ncLatest ? `${sgn(worldTx.total, 0)} → ~${sgn(ncLatest.total, 0)} 亿` : `${sgn(worldTx.total, 0)} 亿美元/月`)
+        : '—',
+      sub: ncLatest ? `TIC 实测 (${ticDate}) → 高频估算 (${ncLatest.period})` : `TIC 表 1 全球外资净买卖 · ${ticDate}`,
       target: '观察标尺：月净买入降至 +500 亿内或转净卖出',
-      detail: worldTx ? `当月净买美股 ${sgn(worldTx.equity, 0)} 亿、美债 ${sgn(worldTx.bond, 0)} 亿` : '待读取',
-      state: !worldTx ? 'watch' : worldTx.total <= 0 ? 'ok' : worldTx.total <= 500 ? 'watch' : 'bad'
+      detail: ncLatest
+        ? `9—11月估算回落至 ${ncMonths.map(m => sgn(m.total, 0)).join(' / ')} 亿（较8月峰值腰斩降温，但仍大于 +500 亿）`
+        : (worldTx ? `当月净买美股 ${sgn(worldTx.equity, 0)} 亿、美债 ${sgn(worldTx.bond, 0)} 亿` : '待读取'),
+      state: !worldTx ? 'watch' : (ncLatest ? ncLatest.total : worldTx.total) <= 0 ? 'ok' : (ncLatest ? ncLatest.total : worldTx.total) <= 500 ? 'watch' : 'bad'
     }
   ];
 
   const okCount = items.filter(x => x.state === 'ok').length;
   const watchCount = items.filter(x => x.state === 'watch').length;
   const badCount = items.filter(x => x.state === 'bad').length;
-  return { items, okCount, watchCount, badCount, spreadBp, us10, cn10, sofr, cnyNow, dxy, worldTx, holdFirst, holdLast };
+  return { items, okCount, watchCount, badCount, spreadBp, us10, cn10, sofr, cnyNow, dxy, worldTx, holdFirst, holdLast, ncMonths, ncLatest, h41CumDrop };
+}
+
+function renderNowcastPanel(tc, worldHist, holdH) {
+  const sec = $('#nowcast-section');
+  const nc = obs?.nowcast;
+  if (!sec) return;
+  if (!nc || nc.status !== 'ok' || !nc.months?.length) {
+    sec.hidden = true;
+    return;
+  }
+  sec.hidden = false;
+  const ms = nc.months;
+  const val = nc.validation || {};
+  $('#nowcast-badge').textContent = `高频数据追至 ${nc.latest_auction_date || nc.latest_h41_date || '最新'} · 80% 留一法预测带`;
+
+  // 1) Left Chart: Global Foreign Net Long-Term Purchases (trailing 15 realized TIC months + Nowcast months)
+  const realFlow = worldHist.slice(-15);
+  if (realFlow.length) {
+    const splitIdx = realFlow.length - 1;
+    const anchorVal = realFlow[splitIdx].total;
+    const flowLabels = [...realFlow.map(r => r.period.slice(2)), ...ms.map(m => m.period.slice(2) + '估')];
+    const padNulls = realFlow.map((_, i) => i === splitIdx ? anchorVal : null);
+    chart('#nowcast-flow-chart', [
+      { name: '外资净买长期证券合计', color: tc.blue, values: [...realFlow.map(r => r.total), ...ms.map(m => m.total)] },
+      { name: '其中：净买美国长期债券', color: tc.amber, values: [...realFlow.map(r => r.bond), ...ms.map(m => m.bond)] }
+    ], {
+      unit: '亿美元/月',
+      labels: flowLabels,
+      splitIndex: splitIdx,
+      bands: [{
+        color: tc.blue,
+        opacity: 0.15,
+        low: [...padNulls, ...ms.map(m => m.total_low80)],
+        high: [...padNulls, ...ms.map(m => m.total_high80)]
+      }],
+      height: 225
+    });
+    const avgEst = ms.reduce((a, m) => a + m.total, 0) / ms.length;
+    $('#nowcast-flow-caption').innerHTML =
+      `<span style="--c:${tc.blue};margin-right:14px">长期证券合计（8月实测 ${sgn(anchorVal, 0)} 亿 → 近月估算均值 ${sgn(avgEst, 0)} 亿/月）</span>` +
+      `<span style="--c:${tc.amber}">其中长期债券（拍卖间接投标+官方托管桥接）</span>`;
+  }
+
+  // 2) Right Chart: Foreign Official US Treasury Holdings (TIC Table 5 + H.4.1 Custody Bridge)
+  const realHold = holdH.filter(r => Number.isFinite(r.official));
+  const offMs = ms.filter(m => Number.isFinite(m.official_holdings));
+  if (realHold.length && offMs.length) {
+    const splitIdx = realHold.length - 1;
+    const anchorOff = realHold[splitIdx].official;
+    const holdLabels = [...realHold.map(r => r.period.slice(2)), ...offMs.map(m => m.period.slice(2) + '估')];
+    const padOff = realHold.map((_, i) => i === splitIdx ? anchorOff : null);
+    chart('#nowcast-hold-chart', [
+      { name: '外国官方机构持有美债存量', color: tc.cyan, values: [...realHold.map(r => r.official), ...offMs.map(m => m.official_holdings)] }
+    ], {
+      unit: '亿美元 · 月末存量',
+      includeZero: false,
+      labels: holdLabels,
+      splitIndex: splitIdx,
+      bands: [{
+        color: tc.cyan,
+        opacity: 0.16,
+        low: [...padOff, ...offMs.map(m => m.official_low80)],
+        high: [...padOff, ...offMs.map(m => m.official_high80)]
+      }],
+      height: 225
+    });
+    const lastEstOff = offMs.at(-1).official_holdings;
+    $('#nowcast-hold-caption').innerHTML =
+      `<span style="--c:${tc.cyan};margin-right:14px">外国官方美债存量（${esc(realHold[splitIdx].period)} 实测 ${fmt(anchorOff, 0)} 亿 → ${esc(offMs.at(-1).period)} 估算 ${fmt(lastEstOff, 0)} 亿，累计 ${sgn(lastEstOff - anchorOff, 0)} 亿）</span>`;
+  }
+
+  // 3) Summary Ledger Table (Anchor Month + Nowcast Months)
+  const anchorTx = worldHist.at(-1);
+  const anchorHold = holdH.at(-1);
+  const prevHold = holdH.at(-2);
+  const anchorOffChg = (anchorHold && prevHold && Number.isFinite(anchorHold.official)) ? anchorHold.official - prevHold.official : null;
+  const aucMap = new Map((obs.sources.ust_auctions?.history || []).map(x => [x.period, x]));
+  const h41Map = new Map((obs.sources.fed_h41_custody?.monthly || []).map(x => [x.period, x]));
+  const a0 = aucMap.get(nc.anchor_period), h0 = h41Map.get(nc.anchor_period);
+
+  const anchorRow = anchorTx ? `<tr class="is-anchor">
+    <td><b>${esc(nc.anchor_period)}</b> <span class="nowcast-pill real">TIC 官方实测锚</span></td>
+    <td class="${anchorTx.total >= 0 ? 'positive' : 'negative'}"><b>${sgn(anchorTx.total, 0)} 亿美元</b> <small style="color:var(--muted)">(已交割实测)</small></td>
+    <td>${sgn(anchorTx.bond, 0)} 亿 <small style="color:var(--muted)">(美股 ${sgn(anchorTx.equity, 0)} 亿)</small></td>
+    <td>${fmt(anchorHold?.official, 0)} 亿 <small class="${(anchorOffChg ?? 0) >= 0 ? 'positive' : 'negative'}">(${sgn(anchorOffChg, 0)} 亿)</small></td>
+    <td>${a0 ? `${a0.auction_count} 场附息拍卖间接占比 ${fmt(a0.indirect_share, 1)}%` : '—'} · H.4.1 托管 ${h0 && Number.isFinite(h0.d_ust) ? sgn(h0.d_ust, 0) + ' 亿' : '—'}</td>
+  </tr>` : '';
+
+  const estRows = ms.map(m => {
+    const pillCls = m.is_partial_month ? 'mtd' : 'est';
+    const pillTxt = m.is_partial_month ? `月初至今估算 (截至 ${m.through_date.slice(5)})` : '全月高频估算';
+    return `<tr>
+      <td><b>${esc(m.period)}</b> <span class="nowcast-pill ${pillCls}">${esc(pillTxt)}</span></td>
+      <td class="${m.total >= 0 ? 'positive' : 'negative'}"><b>${sgn(m.total, 0)} 亿美元</b> <small style="color:var(--muted)">[${sgn(m.total_low80, 0)}, ${sgn(m.total_high80, 0)}]</small></td>
+      <td>${sgn(m.bond, 0)} 亿 <small style="color:var(--muted)">[${sgn(m.bond_low80, 0)}, ${sgn(m.bond_high80, 0)}]</small></td>
+      <td>${Number.isFinite(m.official_holdings) ? `${fmt(m.official_holdings, 0)} 亿 <small class="${(m.official_chg ?? 0) >= 0 ? 'positive' : 'negative'}">(${sgn(m.official_chg, 0)} 亿)</small>` : '—'}</td>
+      <td>${m.auction_count} 场拍卖间接占比 ${fmt(m.indirect_share, 1)}% (交易商兜底 ${fmt(m.primary_dealer_share, 1)}%) · H.4.1 托管 ${sgn(m.h41_d_ust, 0)} 亿</td>
+    </tr>`;
+  }).join('');
+
+  $('#nowcast-table-body').innerHTML = anchorRow + estRows;
+  $('#nowcast-footnote').textContent =
+    `交叉验证精度（历史留一法 LOOCV）：官方存量月变动 RMSE ±${fmt(val.official_holdings_loocv_rmse, 0)} 亿美元（H.4.1 传导弹性 β=${fmt(val.official_beta_h41, 2)}），长期债净流 RMSE ±${fmt(val.bond_flow_loocv_rmse, 0)} 亿，长期证券总净流 RMSE ±${fmt(val.total_flow_loocv_rmse, 0)} 亿。` +
+    ` ${nc.country_boundary_note || ''} ${nc.next_tic_release_hint || ''}`;
 }
 
 function renderOverviewAndBrief() {
@@ -353,41 +521,51 @@ function renderOverviewAndBrief() {
   const holdLast = holdH.at(-1), holdPrev = holdH.at(-2);
   const dOff1m = (holdLast && holdPrev && Number.isFinite(holdLast.official)) ? holdLast.official - holdPrev.official : null;
   const dPriv1m = (holdLast && holdPrev && Number.isFinite(holdLast.private)) ? holdLast.private - holdPrev.private : null;
+  const ncMonths = ck.ncMonths;
+  const ncLatest = ck.ncLatest;
+  const ncAvgTotal = ncMonths.length ? ncMonths.reduce((a, m) => a + m.total, 0) / ncMonths.length : null;
 
   // Regime banner & top pill
   const regimeLabel = ck.okCount >= 4
     ? '条件基本齐备 · 关注实质出池窗口'
     : (ck.worldTx?.total > 500 && (ck.spreadBp ?? -300) < -200)
-      ? `高息套息锁定 · 逆转条件已现 ${ck.okCount}/5 项`
+      ? `高息套息降温但未转负 · 条件已现 ${ck.okCount}/5 项`
       : `拉锯过渡期 · 逆转条件已现 ${ck.okCount}/5 项`;
   $('#regime-text').textContent = regimeLabel;
 
   const dailyDate = obs.sources.us_treasury_yield?.period || obs.sources.ecb_fx?.period || '—';
   const ticDate = obs.sources.tic_transactions?.period || '—';
-  $('#hero-dates').textContent = `日频市场截至 ${dailyDate} · 官方跨境交割截至 ${ticDate}`;
-  $('#hero-title').textContent = `外资整体仍在净买入美股美债（${sgn(worldLast?.total, 0)} 亿美元/月），但“官方降敞口、私人追高息”明显分化；全面转向仍卡在 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂。`;
-  $('#hero-desc').textContent = `日频端：10Y 美债 ${fmt(ck.us10, 2)}%、中债 ${fmt(ck.cn10, 2)}%、隔夜美元现金 SOFR ${fmt(ck.sofr, 2)}%，高息套息锚仍在吸引私人资金留存美元池；结构端：人民币稳于 ${fmt(ck.cnyNow, 4)}，外国官方储备与内地托管美债存量已率先温和压降。`;
+  const hfDate = obs.nowcast?.latest_auction_date || obs.nowcast?.latest_h41_date || dailyDate;
+  $('#hero-dates').textContent = `日频截至 ${dailyDate} · 周频托管/美债拍卖截至 ${hfDate} · TIC 月报实测 ${ticDate}（附 9—11月估算）`;
+  $('#hero-title').textContent = ncLatest
+    ? `外资对美净买由 8月峰值（${sgn(worldLast?.total, 0)} 亿）高频降温至 9—11月约 ${sgn(ncAvgTotal, 0)} 亿美元/月，官方托管美债再降 ${fmt(Math.abs(ck.h41CumDrop), 0)} 亿；但 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂仍锁住私人套息盘。`
+    : `外资整体仍在净买入美股美债（${sgn(worldLast?.total, 0)} 亿美元/月），但“官方降敞口、私人追高息”明显分化；全面转向仍卡在 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂。`;
+  $('#hero-desc').textContent = `日频端：10Y 美债 ${fmt(ck.us10, 2)}%、中债 ${fmt(ck.cn10, 2)}%、隔夜美元现金 SOFR ${fmt(ck.sofr, 2)}%；高频桥接端：美联储 H.4.1 周报与美债拍卖显示 9—11月外资认购热度较 8月腰斩回落、外国官方储备持续减持，但私人资金受高利差吸引尚未转为净撤出。`;
 
   $('#hero-side').innerHTML = [
-    ['当前所处阶段', '美元高息虹吸 · 主体分化'],
+    ['当前所处阶段', '官方持续减仓 · 私人流入放缓'],
     ['逆转五条件进度', `${ck.okCount} 项已具备 · ${ck.watchCount} 项半松动 · ${ck.badCount} 项未达`],
-    ['中美 10Y 利差', `${sgn(ck.spreadBp, 1)} bp`],
-    ['美元隔夜现金 SOFR', `${fmt(ck.sofr, 2)}%`],
-    ['外资对美月净买', `${sgn(worldLast?.total, 1)} 亿美元`]
+    ['中美 10Y 利差 / SOFR', `${sgn(ck.spreadBp, 1)} bp / ${fmt(ck.sofr, 2)}%`],
+    [`TIC 实测 (${ticDate})`, `${sgn(worldLast?.total, 0)} 亿美元/月`],
+    ['9—11月高频估算均值', ncAvgTotal !== null ? `~${sgn(ncAvgTotal, 0)} 亿美元/月` : '—']
   ].map(([k, v]) => `<div class="hero-kv"><span>${k}</span><b>${esc(v)}</b></div>`).join('');
 
   // Section 1: Big 4 Cards
   const dTx = (worldLast && worldPrev) ? worldLast.total - worldPrev.total : null;
   $('#overview-cards').innerHTML = [
     {
-      title: '跨境吸金总量（流量实测）',
-      badge: `TIC 月报 · ${ticDate}`,
+      title: '跨境吸金总量（实测 + 高频估算）',
+      badge: ncLatest ? `实测 ${ticDate} + 估算至 ${ncLatest.period}` : `TIC 月报 · ${ticDate}`,
       num: sgn(worldLast?.total, 0),
-      unit: '亿美元/月',
+      unit: '亿美元 (8月实测)',
       color: tc.blue,
-      sub: `美股 ${sgn(worldLast?.equity, 0)} 亿 · 美债 ${sgn(worldLast?.bond, 0)} 亿${Number.isFinite(dTx) ? `（较上月 ${sgn(dTx, 0)} 亿）` : ''}`,
-      spark: sparkline(worldHist.slice(-24).map(x => x.total), tc.blue),
-      verdict: '全球外国居民当月仍在净买入美国长期证券，尚未出现总量层面的集中撤出。'
+      sub: ncMonths.length
+        ? `9—11月高频估算：${ncMonths.map(m => `${m.period.slice(5)}月 ${sgn(m.total, 0)}`).join(' · ')} 亿`
+        : `美股 ${sgn(worldLast?.equity, 0)} 亿 · 美债 ${sgn(worldLast?.bond, 0)} 亿${Number.isFinite(dTx) ? `（较上月 ${sgn(dTx, 0)} 亿）` : ''}`,
+      spark: sparkline([...worldHist.slice(-18).map(x => x.total), ...ncMonths.map(m => m.total)], tc.blue),
+      verdict: ncLatest
+        ? '美债拍卖间接投标占比自 65% 回落至 ~60%，近两月半外资净买入较 8月峰值降温逾半，但中枢仍为正。'
+        : '全球外国居民当月仍在净买入美国长期证券，尚未出现总量层面的集中撤出。'
     },
     {
       title: '中美 10Y 利差（流向核心阻力）',
@@ -410,18 +588,21 @@ function renderOverviewAndBrief() {
       verdict: `VIX 处于 ${vix < 22 ? '常态区间（未触发流动性恐慌挤兑）' : '偏高区间'}，当前资金流向主要由利差驱动。`
     },
     {
-      title: '主体分化：官方储备 vs 私人盘',
-      badge: `TIC 表 5 · ${holdLast?.period || '—'}`,
-      num: `${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)}`,
-      unit: '亿美元(单月存量变动)',
+      title: '主体分化：官方周度托管 vs 私人盘',
+      badge: `H.4.1 周报 · ${obs.sources.fed_h41_custody?.period || holdLast?.period || '—'}`,
+      num: ncMonths.length ? sgn(ck.h41CumDrop, 0) : `${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)}`,
+      unit: ncMonths.length ? '亿美元(9月来官方托管变动)' : '亿美元(单月存量变动)',
       color: tc.purple,
-      sub: `内地托管存量 ${fmt(holdLast?.cn, 0)} 亿（年同比 ${sgn(holdLast && ck.holdFirst ? holdLast.cn - ck.holdFirst.cn : null, 0)} 亿）`,
-      spark: sparkline(holdH.map(x => x.official && x.world ? (x.official / x.world) * 100 : null), tc.purple),
-      verdict: '总量平稳背后：外国官方储备占比在下降，新增美债买盘主要来自追逐高息的私人与托管资金。'
+      sub: `8月官方/私人变动 ${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)} 亿 · 内地存量 ${fmt(holdLast?.cn, 0)} 亿`,
+      spark: sparkline((obs.sources.fed_h41_custody?.history || []).map(x => x.ust), tc.purple),
+      verdict: '美联储周报证实 9—11月外国央行托管美债连续 3 个月净减持，官方降久期与私人吃票息持续背离。'
     }
   ].map(c => `<article class="big-card" style="--c:${c.color}"><div class="big-card-top"><span>${c.title}</span><span class="big-card-badge">${esc(c.badge)}</span></div><div class="big-num">${c.num}<small>${c.unit}</small></div><div class="big-sub">${c.sub}</div><div class="spark-wrap">${c.spark}</div><div class="big-verdict">${c.verdict}</div></article>`).join('');
 
-  // Section 2: 5-Condition Checklist
+  // Section 2: Same-Chart Nowcast Panel (Solid Realized + Dashed 80% Interval)
+  renderNowcastPanel(tc, worldHist, holdH);
+
+  // Section 3: 5-Condition Checklist
   const okPct = (ck.okCount / 5) * 100, watchPct = (ck.watchCount / 5) * 100, badPct = (ck.badCount / 5) * 100;
   $('#checklist-summary').innerHTML = `
     <div class="progress-box">
@@ -438,7 +619,7 @@ function renderOverviewAndBrief() {
       </div>
     </div>
     <div class="bottleneck-box">
-      <strong>一句话看懂当前卡在哪：</strong>人民币汇率定力（${fmt(ck.cnyNow, 4)}）与官方储备降久期已经先行到位；但<strong>中美 10Y 利差仍倒挂 ${fmt(Math.abs(ck.spreadBp ?? 0), 1)} bp</strong>、隔夜美元现金仍有 <strong>${fmt(ck.sofr, 2)}%</strong> 无风险套息，导致全球私人资金仍在顺差买入美元证券。只有看到「美债收益率/SOFR 下台阶」与「TIC 私人净买降温」共振，才会打开大规模实质回流窗口。
+      <strong>一句话看懂当前卡在哪：</strong>人民币汇率定力（${fmt(ck.cnyNow, 4)}）与官方储备持续减持美债（9月以来联储托管再降 ${fmt(Math.abs(ck.h41CumDrop), 0)} 亿）已到位，9—11月外资总净买也较 8月峰值降温过半；但<strong>中美 10Y 利差仍倒挂 ${fmt(Math.abs(ck.spreadBp ?? 0), 1)} bp</strong>、隔夜美元现金仍有 <strong>${fmt(ck.sofr, 2)}%</strong>，私人套息买盘尚未彻底熄火。
     </div>`;
 
   const stateTag = s => s === 'ok'
@@ -460,13 +641,19 @@ function renderOverviewAndBrief() {
       <div class="check-target">${esc(it.target)}<small>${esc(it.detail)}</small></div>
     </div>`).join('');
 
-  // Section 3: 6 Daily Market Thermometer Cards + Spread Chart + Pool Bars
+  // Section 4: 8 Daily & Weekly Market Thermometer Cards + Spread Chart + Pool Bars
   const usH = obs.sources.us_treasury_yield?.history || [];
   const cnH = obs.sources.cn_gov_yield?.history || [];
   const sofrH = obs.sources.nyfed_sofr?.history || [];
   const fxH = obs.sources.ecb_fx?.history || [];
+  const h41W = obs.sources.fed_h41_custody?.history || [];
+  const aucM = obs.sources.ust_auctions?.history || [];
   const us2y = getMetric('us_treasury_yield', 'us_2y')?.value;
   const cn1y = getMetric('cn_gov_yield', 'cn_1y')?.value;
+  const h41Ust = getMetric('fed_h41_custody', 'h41_custody_ust')?.value;
+  const h41Chg4w = getMetric('fed_h41_custody', 'h41_custody_4w_chg')?.value;
+  const aucShare = getMetric('ust_auctions', 'ust_indirect_share')?.value;
+  const aucLastM = aucM.at(-1);
 
   const miniSpecs = [
     ['10Y 美债收益率', fmt(ck.us10, 2), '%', `2Y ${fmt(us2y, 2)}%`, obs.sources.us_treasury_yield?.period, usH.map(x => x.y10), tc.blue],
@@ -474,7 +661,9 @@ function renderOverviewAndBrief() {
     ['中美 10Y 利差', sgn(ck.spreadBp, 0), 'bp', '中债减美债', spreadSeries.at(-1)?.period, spreadSeries.map(x => x.spreadBp), tc.red],
     ['美元隔夜 SOFR', fmt(ck.sofr, 2), '%', '现金套息锚', obs.sources.nyfed_sofr?.period, sofrH.map(x => x.sofr), tc.amber],
     ['美元 / 人民币', fmt(ck.cnyNow, 4), '', `港币 ${fmt(getMetric('ecb_fx', 'usd_hkd')?.value, 4)}`, obs.sources.ecb_fx?.period, fxH.map(x => x.usd_cny), tc.cyan],
-    ['VIX 恐慌 / 美元指数', fmt(vix, 2), '点', `美元指数 ${fmt(ck.dxy, 1)}`, obs.sources.cboe_vix?.period, vixHist, tc.purple]
+    ['VIX 恐慌 / 美元指数', fmt(vix, 2), '点', `美元指数 ${fmt(ck.dxy, 1)}`, obs.sources.cboe_vix?.period, vixHist, tc.purple],
+    ['联储托管官方美债', fmt(h41Ust, 0), '亿', `近4周 ${sgn(h41Chg4w, 0)} 亿`, obs.sources.fed_h41_custody?.period, h41W.map(x => x.ust), tc.cyan],
+    ['美债拍卖间接获配', fmt(aucShare, 1), '%', aucLastM ? `${aucLastM.period.slice(5)}月已拍 ${aucLastM.auction_count} 场` : '一级外资占比', obs.sources.ust_auctions?.period, aucM.slice(-24).map(x => x.indirect_share), tc.blue]
   ];
   $('#market-cards').innerHTML = miniSpecs.map(([name, val, unit, sub, pd, arr, col]) =>
     `<div class="mini-card"><span>${esc(name)}</span><b>${val}<small>${esc(unit)}</small></b><div class="mini-spark">${sparkline(arr, col, 28)}</div><div class="mini-meta"><span>${esc(sub)}</span><span>${esc((pd || '').slice(5))}</span></div></div>`
@@ -505,7 +694,7 @@ function renderOverviewAndBrief() {
     <div class="pool-item">
       <div class="pool-head"><span>外国投资者持有美国长期证券总盘子（${esc(worldLast?.period || '—')}）</span><b>${fmt(totalLtTrillion, 2)} 万亿美元</b></div>
       <div class="pool-bar"><span style="width:100%;background:linear-gradient(90deg,${tc.blue},${tc.cyan})"></span></div>
-      <div class="pool-note">最新单月净买入 ${sgn(worldLast?.total, 1)} 亿美元，价格重估变动 ${sgn(worldLast?.valuation, 1)} 亿美元（存量涨跌大头来自市值重估而非净买）。</div>
+      <div class="pool-note">8月实测净买 ${sgn(worldLast?.total, 1)} 亿（市值重估 ${sgn(worldLast?.valuation, 1)} 亿）；9—11月高频估算月均净买回落至 ~${sgn(ncAvgTotal, 0)} 亿美元。</div>
     </div>
     <div class="pool-item">
       <div class="pool-head"><span>外资持有美国国债主体拆分（合计 ${fmt(worldTreas / 10000, 2)} 万亿美元）</span><b>官方 ${fmt(offPct, 1)}% · 私人 ${fmt(privPct, 1)}%</b></div>
@@ -513,18 +702,18 @@ function renderOverviewAndBrief() {
         <span style="width:${offPct}%;background:${tc.cyan}" title="外国官方储备"></span>
         <span style="width:${privPct}%;background:${tc.amber}" title="外国私人与托管部门"></span>
       </div>
-      <div class="pool-note">🟢 外国官方机构 ${fmt(offTreas, 0)} 亿美元（单月 ${sgn(dOff1m, 0)} 亿） ｜ 🟠 外国私人部门 ${fmt(privTreas, 0)} 亿美元（单月 ${sgn(dPriv1m, 0)} 亿）。</div>
+      <div class="pool-note">🟢 8月官方存量 ${fmt(offTreas, 0)} 亿 → 11月 H.4.1 桥接估算 ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿 ｜ 🟠 私人部门 ${fmt(privTreas, 0)} 亿美元。</div>
     </div>
     <div class="pool-item" style="margin-bottom:0">
-      <div class="pool-head"><span>中国内地与香港名义托管美债对照</span><b>内地 ${fmt(holdLast?.cn, 0)} 亿 · 香港 ${fmt(holdLast?.hk, 0)} 亿</b></div>
+      <div class="pool-head"><span>中国内地与香港名义托管美债对照（${esc(holdLast?.period || '—')}）</span><b>内地 ${fmt(holdLast?.cn, 0)} 亿 · 香港 ${fmt(holdLast?.hk, 0)} 亿</b></div>
       <div class="pool-bar">
         <span style="width:${cnShare}%;background:${tc.cyan}"></span>
         <span style="width:${hkShare}%;background:${tc.blue}"></span>
       </div>
-      <div class="pool-note">合计占外资美债总盘 ${fmt(cnShare + hkShare, 1)}%；内地当月对美长期证券净交易 ${sgn(cnLast?.total, 1)} 亿，香港 ${sgn(hkLast?.total, 1)} 亿美元。</div>
+      <div class="pool-note">合计占外资美债总盘 ${fmt(cnShare + hkShare, 1)}%；8月内地对美长期证券净交易 ${sgn(cnLast?.total, 1)} 亿、香港 ${sgn(hkLast?.total, 1)} 亿（高频周报无分国别明细）。</div>
     </div>`;
 
-  // Section 4: 4 Scenario Plain-Language Cards
+  // Section 5: 4 Scenario Plain-Language Cards
   const presets = getPresetSummaries();
   const fmtM = m => m === null ? '36个月内不触发' : m === 0 ? '起点即满足' : `约第 ${m} 个月`;
   $('#overview-scenarios').innerHTML = presets.map(s => `
@@ -555,21 +744,21 @@ function renderOverviewAndBrief() {
   // Render Page 2: Executive Briefing (#brief-content)
   $('#brief-content').innerHTML = `
     <article class="brief-card">
-      <h2><span class="sec-num">1</span> 当期定论与核心实测读数</h2>
-      <p style="font-size:13px;color:var(--text-2);line-height:1.65">截至日频 <b>${esc(dailyDate)}</b> 与跨境月报 <b>${esc(ticDate)}</b>：全球资金对美长期证券仍处<b>高息套息净流入期</b>，尚未进入全面撤离；但主权官方储备与私人套息盘呈反向分化。</p>
+      <h2><span class="sec-num">1</span> 当期定论：实测 ＋ 近两月半高频桥接</h2>
+      <p style="font-size:13px;color:var(--text-2);line-height:1.65">截至日频 <b>${esc(dailyDate)}</b>、周频托管/拍卖 <b>${esc(hfDate)}</b> 与 TIC 月报 <b>${esc(ticDate)}</b>：9—11月外资对美净买入较 8月峰值<b>降温过半</b>，外国官方储备连续减持，但高利差下私人买盘尚未转负。</p>
       <div class="brief-kpis">
-        <div class="brief-kpi"><span>外资对美月净买</span><b style="color:${tc.blue}">${sgn(worldLast?.total, 0)} 亿</b><small>TIC 表1 (${esc(ticDate)})</small></div>
+        <div class="brief-kpi"><span>8月实测 → 近月估算</span><b style="color:${tc.blue}">${sgn(worldLast?.total, 0)} → ${sgn(ncAvgTotal, 0)}</b><small>亿美元/月 (9—11月桥接均值)</small></div>
         <div class="brief-kpi"><span>中美 10Y 利差</span><b style="color:${tc.red}">${sgn(ck.spreadBp, 0)} bp</b><small>中 ${fmt(ck.cn10, 2)}% / 美 ${fmt(ck.us10, 2)}%</small></div>
         <div class="brief-kpi"><span>美元隔夜 SOFR</span><b style="color:${tc.amber}">${fmt(ck.sofr, 2)}%</b><small>汇率 ${fmt(ck.cnyNow, 4)} · VIX ${fmt(vix, 1)}</small></div>
       </div>
-      <p class="micro">核心辨析：美股/美债波动时，若美元隔夜现金利率仍高达 ~4%，卖盘首先退入美元货币市场（留存美元池），不会自动变成新兴市场净流入。</p>
+      <p class="micro">核心辨析：美债拍卖间接投标占比由 65% 降至 ~60% 印证边际降温；但隔夜美元现金仍近 4%，卖出风险资产的资金优先停泊美元货币基金。</p>
     </article>
 
     <article class="brief-card">
       <h2><span class="sec-num">2</span> 逆转五项条件进度表（${ck.okCount}/5 已具备）</h2>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>条件项</th><th>最新实测</th><th>参考观察线</th><th>判定</th></tr></thead>
+          <thead><tr><th>条件项</th><th>最新实测 / 估算</th><th>参考观察线</th><th>判定</th></tr></thead>
           <tbody>
             ${ck.items.map(it => `<tr><td>${esc(it.name)}</td><td>${esc(it.reading)}</td><td>${esc(it.target.replace('经验松动线：', '').replace('观察标尺：', ''))}</td><td>${briefTag(it.state)}</td></tr>`).join('')}
           </tbody>
@@ -578,13 +767,13 @@ function renderOverviewAndBrief() {
     </article>
 
     <article class="brief-card">
-      <h2><span class="sec-num">3</span> 存量真相：官方降久期 vs 私人追高息</h2>
-      <div class="driver"><span>外资持有美国长期证券总规模</span><b>${fmt(totalLtTrillion, 2)} 万亿美元</b></div>
-      <div class="driver"><span>其中：外国官方机构持有美债（${fmt(offPct, 1)}%）</span><b>${fmt(offTreas, 0)} 亿美元（单月 ${sgn(dOff1m, 0)} 亿）</b></div>
-      <div class="driver"><span>其中：外国私人部门持有美债（${fmt(privPct, 1)}%）</span><b>${fmt(privTreas, 0)} 亿美元（单月 ${sgn(dPriv1m, 0)} 亿）</b></div>
-      <div class="driver"><span>中国内地 / 香港名义托管美债存量</span><b>${fmt(holdLast?.cn, 0)} 亿 / ${fmt(holdLast?.hk, 0)} 亿美元</b></div>
-      <div class="driver"><span>内地 / 香港当月对美长期证券净买卖</span><b>${sgn(cnLast?.total, 1)} 亿 / ${sgn(hkLast?.total, 1)} 亿美元</b></div>
-      <p class="micro" style="margin-top:8px">口径提示：月末存量变动同时包含净买卖、美债价格涨跌重估与离岸转托管，不可将存量增减直接等同于资金净进出。</p>
+      <h2><span class="sec-num">3</span> 存量与周度追踪：官方降久期 vs 私人追高息</h2>
+      <div class="driver"><span>外资持有美国长期证券总规模（${esc(ticDate)}）</span><b>${fmt(totalLtTrillion, 2)} 万亿美元</b></div>
+      <div class="driver"><span>外国官方持有美债（8月实测 → 11月估算）</span><b>${fmt(offTreas, 0)} → ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿美元</b></div>
+      <div class="driver"><span>美联储 H.4.1 官方托管美债（截至 ${esc(obs.sources.fed_h41_custody?.period || '—')}）</span><b>${fmt(h41Ust, 0)} 亿美元（9月来 ${sgn(ck.h41CumDrop, 0)} 亿）</b></div>
+      <div class="driver"><span>中国内地 / 香港名义托管美债存量（${esc(ticDate)}）</span><b>${fmt(holdLast?.cn, 0)} 亿 / ${fmt(holdLast?.hk, 0)} 亿美元</b></div>
+      <div class="driver"><span>内地 / 香港 8月对美长期证券净买卖</span><b>${sgn(cnLast?.total, 1)} 亿 / ${sgn(hkLast?.total, 1)} 亿美元</b></div>
+      <p class="micro" style="margin-top:8px">口径提示：联储 H.4.1 与美债拍卖仅披露全球外国合计，不披露分国别明细；因此不伪造内地或香港 9—11月单月净买卖点估计。</p>
     </article>
 
     <article class="brief-card">
@@ -734,7 +923,7 @@ function renderParams() {
     `<tr><td>${esc(lookup[k]?.[0] || k)}</td><td>${fmt(v, 4)}</td><td>${esc(lookup[k]?.[1] || ({ months: '月 · 演算长度', step: '月 · RK2 步长' })[k] || '情景系数')}</td></tr>`
   ).join('');
   $('#fixed-params').textContent = JSON.stringify({
-    site_version: '2.2.0',
+    site_version: '2.3.0',
     model_core: '2.1.0-coupled-rk2',
     integrator: '2nd-order positivity-preserving conservative Heun (RK2)',
     initial_capital_index: INITIAL,
@@ -857,7 +1046,7 @@ function showPage() {
     observed: '真实资金账与识别',
     method: '原理与说明'
   };
-  document.title = `${titles[page] || '今日看板'} · 中美资本三流看板 V2.2`;
+  document.title = `${titles[page] || '今日看板'} · 中美资本三流看板 V2.3`;
   if (page !== 'model') stop();
   if ((page === 'overview' || page === 'brief') && obs) renderOverviewAndBrief();
   if (page === 'observed') { if (obs) renderObserved(); renderIdentification(); renderArchive(); }
@@ -922,12 +1111,12 @@ function download(text, name, type) {
 $('#export-csv').addEventListener('click', () => {
   const head = 'month,flow_L,voluntary_L,forced_L,direct_J,Je,Jb,Jcross,NC_total,NU_sec,NUSD_broad,velocity_v,velocity_vol,velocity_forced,H,P,R,W,cost_drag,cum_cost,mark_G,' + ASSETS.map((_, i) => 'K_' + i).join(',');
   const lines = rows.map(r => [r.month, r.L, r.Lvol, r.forced, r.J, r.Je, r.Jb, r.Jcross, r.NC, r.NU, r.NUSD, r.v, r.vVol, r.vForced, r.H, r.P, r.R, r.W, r.costDrag, r.cumCost, r.G, ...r.K].join(','));
-  download('\ufeff' + [head, ...lines].join('\r\n'), 'three-flow-v2.2-conditional-path.csv', 'text/csv;charset=utf-8');
+  download('\ufeff' + [head, ...lines].join('\r\n'), 'three-flow-v2.3-conditional-path.csv', 'text/csv;charset=utf-8');
   toast('逐月三流分解数据已导出 CSV。');
 });
 
 $('#export-json').addEventListener('click', () => download(JSON.stringify({
-  model: 'capital-three-flow-v2.2',
+  model: 'capital-three-flow-v2.3',
   kind: 'conditional_coupled_not_fitted',
   units: 'capital index W0=100; month',
   initial: INITIAL,
@@ -936,7 +1125,7 @@ $('#export-json').addEventListener('click', () => download(JSON.stringify({
   rows,
   events: ev,
   sensitivity: sens
-}, null, 2), 'three-flow-v2.2-reproducible.json', 'application/json'));
+}, null, 2), 'three-flow-v2.3-reproducible.json', 'application/json'));
 
 function beijing(s) {
   try {
@@ -1013,7 +1202,8 @@ function renderSnapshot() {
 
   const okSrcCount = Object.values(obs.sources).filter(s => s.status === 'ok').length;
   const totalSrcCount = Object.keys(obs.sources).length;
-  $('#sync-status').textContent = `${bad ? `注意：${totalSrcCount - okSrcCount} 个来源暂用旧值；` : `公开源 ${okSrcCount}/${totalSrcCount} 正常 · `}日频利率/汇率期 ${obs.sources.us_treasury_yield?.period || obs.sources.ecb_fx?.period || '—'} · TIC 跨境统计期 ${src?.period || '—'} · 快照生成 ${beijing(obs.generated_at)}`;
+  const hfDate = obs.nowcast?.latest_auction_date || obs.nowcast?.latest_h41_date || '—';
+  $('#sync-status').textContent = `${bad ? `注意：${totalSrcCount - okSrcCount} 个来源暂用旧值；` : `公开源 ${okSrcCount}/${totalSrcCount} 正常 · `}日频期 ${obs.sources.us_treasury_yield?.period || obs.sources.ecb_fx?.period || '—'} · 高频托管/拍卖期 ${hfDate} · TIC 月报期 ${src?.period || '—'} · 快照 ${beijing(obs.generated_at)}`;
 }
 
 function renderHoldings() {
@@ -1024,22 +1214,39 @@ function renderHoldings() {
     return;
   }
   const tc = themeColors();
-  const labels = h.map(r => r.period.slice(2));
   const first = h[0], last = h.at(-1);
   if (state.htab === 'sector' && Number.isFinite(last.official)) {
+    const offMs = state.showNowcast ? (obs?.nowcast?.months || []).filter(m => Number.isFinite(m.official_holdings)) : [];
+    const splitIdx = offMs.length ? h.length - 1 : null;
+    const labels = [...h.map(r => r.period.slice(2)), ...offMs.map(m => m.period.slice(2) + '估')];
+    const padAnchor = h.map((_, i) => i === h.length - 1 ? last.official : null);
     chart('#holdings-chart', [
-      { name: '外国官方储备机构持有美债', color: tc.cyan, values: h.map(r => r.official) },
-      { name: '外国私人与托管机构持有美债', color: tc.amber, values: h.map(r => r.private) }
-    ], { unit: '亿美元 · 月末存量', labels, height: 220, includeZero: false });
+      { name: '外国官方储备机构持有美债', color: tc.cyan, values: [...h.map(r => r.official), ...offMs.map(m => m.official_holdings)] },
+      { name: '外国私人与托管机构持有美债', color: tc.amber, values: [...h.map(r => r.private), ...offMs.map(() => null)] }
+    ], {
+      unit: '亿美元 · 月末存量',
+      labels,
+      height: 225,
+      includeZero: false,
+      splitIndex: splitIdx,
+      bands: offMs.length ? [{
+        color: tc.cyan,
+        opacity: 0.16,
+        low: [...padAnchor, ...offMs.map(m => m.official_low80)],
+        high: [...padAnchor, ...offMs.map(m => m.official_high80)]
+      }] : []
+    });
     const dOff = last.official - first.official, dPriv = (last.private ?? 0) - (first.private ?? 0);
-    $('#holdings-summary').innerHTML = `结构对照（${esc(first.period)} → ${esc(last.period)}）：外国官方机构存量 <b>${sgn(dOff, 1)}</b> 亿美元（月末 ${fmt(last.official, 1)} 亿），私人与托管部门 <b>${sgn(dPriv, 1)}</b> 亿美元（月末 ${fmt(last.private, 1)} 亿）。总量平稳掩盖了官方储备与私人套息盘的分化。`;
+    const ncNote = offMs.length ? ` 叠加美联储 H.4.1 周报桥接后，${esc(offMs.at(-1).period)} 外国官方美债存量估算进一步降至 <b>${fmt(offMs.at(-1).official_holdings, 0)}</b> 亿美元（80% 区间 [${fmt(offMs.at(-1).official_low80, 0)}, ${fmt(offMs.at(-1).official_high80, 0)}]）。` : '';
+    $('#holdings-summary').innerHTML = `结构对照（${esc(first.period)} → ${esc(last.period)} 实测）：外国官方机构存量 <b>${sgn(dOff, 1)}</b> 亿美元（月末 ${fmt(last.official, 1)} 亿），私人与托管部门 <b>${sgn(dPriv, 1)}</b> 亿美元（月末 ${fmt(last.private, 1)} 亿）。${ncNote}`;
   } else {
+    const labels = h.map(r => r.period.slice(2));
     chart('#holdings-chart', [
       { name: '中国内地持有美债存量', color: tc.cyan, values: h.map(r => r.cn) },
       { name: '中国香港持有美债存量', color: tc.blue, values: h.map(r => r.hk) }
-    ], { unit: '亿美元 · 月末存量', labels, height: 220, includeZero: false });
+    ], { unit: '亿美元 · 月末存量', labels, height: 225, includeZero: false });
     const dCn = last.cn - first.cn, dHk = last.hk - first.hk;
-    $('#holdings-summary').innerHTML = `存量对照（${esc(first.period)} → ${esc(last.period)}）：内地名义托管存量 <b>${sgn(dCn, 1)}</b> 亿美元（最新 ${fmt(last.cn, 1)} 亿），香港托管存量 <b>${sgn(dHk, 1)}</b> 亿美元（最新 ${fmt(last.hk, 1)} 亿）。月末存量含美债价格重估与离岸转托管，不能直接等同净卖出回流。`;
+    $('#holdings-summary').innerHTML = `存量对照（${esc(first.period)} → ${esc(last.period)}）：内地名义托管存量 <b>${sgn(dCn, 1)}</b> 亿美元（最新 ${fmt(last.cn, 1)} 亿），香港托管存量 <b>${sgn(dHk, 1)}</b> 亿美元（最新 ${fmt(last.hk, 1)} 亿）。美联储 H.4.1 周报不披露分国别明细，故此处仅展示官方已交割月度存量。`;
   }
 }
 
@@ -1048,23 +1255,66 @@ function renderObserved() {
   const tc = themeColors();
   const key = $('#region').value, rs = regionData(key), r = rs.at(-1);
   const label = ({ world: '全球外国居民', cn: '中国内地居民', hk: '中国香港居民' })[key];
-  $('#history-count').textContent = `${rs.length} 个月 · ${label}`;
+  const ncMs = obs?.nowcast?.months || [];
+  const canOverlay = key === 'world' && ncMs.length > 0;
+  const useOverlay = canOverlay && state.showNowcast;
+
+  const btnNc = $('#toggle-nowcast');
+  if (btnNc) {
+    if (key !== 'world') {
+      btnNc.textContent = '分国别口径不伪造 9—11 月点估计';
+      btnNc.classList.remove('active');
+      btnNc.classList.add('disabled-note');
+      btnNc.setAttribute('aria-pressed', 'false');
+    } else {
+      btnNc.classList.remove('disabled-note');
+      btnNc.classList.toggle('active', state.showNowcast);
+      btnNc.setAttribute('aria-pressed', String(state.showNowcast));
+      btnNc.textContent = state.showNowcast ? '✓ 同图叠加近月高频估算区间' : '+ 叠加近月高频估算区间';
+    }
+  }
+
+  $('#history-count').textContent = `${rs.length} 个月实测${useOverlay ? ` + ${ncMs.length} 个月高频估算` : ''} · ${label}`;
   const world = regionData('world').at(-1), cn = regionData('cn').at(-1), hk = regionData('hk').at(-1);
+  const ncAvg = ncMs.length ? ncMs.reduce((a, m) => a + m.total, 0) / ncMs.length : null;
   $('#observation-verdict').innerHTML = world
-    ? `<strong>${esc(world.period)}：外国居民整体${world.total > 0 ? '仍在净买入' : '转为净卖出'}美国长期证券，但官方储备、私人套息与地区居民明显分化。</strong><p>当月全球对美长期证券净交易 ${sgn(world.total)} 亿美元；内地居民 ${sgn(cn?.total)}、香港居民 ${sgn(hk?.total)} 亿美元。单边吸收数据可证伪“美资全面溃逃”，但因缺少穿透对手方，须结合下方部分识别区间判断双边流向。</p>`
+    ? `<strong>${esc(world.period)} 官方实测净买 ${sgn(world.total, 0)} 亿美元${ncAvg !== null ? `；9—11月高频桥接估算降温至月均 ~${sgn(ncAvg, 0)} 亿美元` : ''}。</strong><p>8月全球对美长期证券净交易 ${sgn(world.total)} 亿美元（内地 ${sgn(cn?.total)}、香港 ${sgn(hk?.total)} 亿）；美联储 H.4.1 周度托管与附息美债拍卖显示 9—11月官方储备持续减仓、海外拍卖认购边际回落，但分国别明细须待财政部后续 TIC 月报正式披露。</p>`
     : '官方序列尚不可用；不生成替代结论。';
 
+  const ncLast = ncMs.at(-1);
   $('#observed-metrics').innerHTML =
-    metric('对美长期证券净买卖', 'q', sgn(r?.total), '亿美元/月', `${r?.period || '—'} · ${label}`, tc.cyan) +
-    metric('其中：美国股票', 'E', sgn(r?.equity), '亿美元/月', '直接使用官方净交易分项', tc.blue) +
-    metric('其中：美国债券', 'B', sgn(r?.bond), '亿美元/月', '合计减股票（国债+机构债+公司债）', tc.amber) +
+    metric('对美长期证券净买卖', 'q', sgn(r?.total), '亿美元/月', `${r?.period || '—'} 实测${key === 'world' && ncLast ? ` · ${ncLast.period}估算 ${sgn(ncLast.total, 0)}` : ` · ${label}`}`, tc.cyan) +
+    metric('其中：美国股票', 'E', sgn(r?.equity), '亿美元/月', key === 'world' && ncLast ? `实测 · 近月收缩均值 ${sgn(ncLast.equity, 0)}` : '直接使用官方净交易分项', tc.blue) +
+    metric('其中：美国债券', 'B', sgn(r?.bond), '亿美元/月', key === 'world' && ncLast ? `实测 · ${ncLast.period}拍卖桥接 ${sgn(ncLast.bond, 0)}` : '合计减股票（国债+机构债+公司债）', tc.amber) +
     metric('月度净配置强度', 'q/K', sgn(r?.intensity), '%/月', '净额占持仓比（非毛流速 v）', tc.purple);
 
+  const splitIdx = useOverlay ? rs.length - 1 : null;
+  const obsLabels = useOverlay
+    ? [...rs.map(x => x.period.slice(2)), ...ncMs.map(m => m.period.slice(2) + '估')]
+    : rs.map(x => x.period.slice(2));
+  const padTot = useOverlay ? rs.map((_, i) => i === splitIdx ? rs[splitIdx].total : null) : [];
   chart('#observed-chart', [
-    { name: '长期证券合计', color: tc.cyan, values: rs.map(r => r.total) },
-    { name: '股票', color: tc.blue, values: rs.map(r => r.equity) },
-    { name: '债券', color: tc.amber, values: rs.map(r => r.bond) }
-  ], { unit: '亿美元/月', labels: rs.map(r => r.period.slice(2)), height: 280 });
+    { name: '长期证券合计', color: tc.cyan, values: useOverlay ? [...rs.map(x => x.total), ...ncMs.map(m => m.total)] : rs.map(x => x.total) },
+    { name: '股票', color: tc.blue, values: useOverlay ? [...rs.map(x => x.equity), ...ncMs.map(m => m.equity)] : rs.map(x => x.equity) },
+    { name: '债券', color: tc.amber, values: useOverlay ? [...rs.map(x => x.bond), ...ncMs.map(m => m.bond)] : rs.map(x => x.bond) }
+  ], {
+    unit: '亿美元/月',
+    labels: obsLabels,
+    height: 280,
+    splitIndex: splitIdx,
+    bands: useOverlay ? [{
+      color: tc.cyan,
+      opacity: 0.15,
+      low: [...padTot, ...ncMs.map(m => m.total_low80)],
+      high: [...padTot, ...ncMs.map(m => m.total_high80)]
+    }] : []
+  });
+  const subEl = $('#observed-chart-sub');
+  if (subEl) {
+    subEl.textContent = useOverlay
+      ? '实线圆点为 TIC 表 1 已交割实测；右侧虚线空心点与青色阴影带为 9—11 月高频桥接估算及 80% 预测区间'
+      : '月频实测 · 亿美元/月 · 零轴以上为净买入美国股票/债券，零轴以下为净卖出';
+  }
 
   chart('#intensity-chart', [{ name: '净配置强度', color: tc.purple, values: rs.map(r => r.intensity) }], { unit: '%/月 · 净额代理', labels: rs.map(r => r.period.slice(2)), height: 215 });
 
@@ -1087,6 +1337,11 @@ function renderObserved() {
   ).join('');
 }
 
+$('#toggle-nowcast')?.addEventListener('click', () => {
+  if ($('#region')?.value !== 'world') return;
+  state.showNowcast = !state.showNowcast;
+  renderObserved();
+});
 $('#region').addEventListener('change', renderObserved);
 $('#refresh').addEventListener('click', () => sync(true));
 $('#export-observed').addEventListener('click', () => {

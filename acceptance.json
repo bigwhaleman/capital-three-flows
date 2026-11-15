@@ -1,16 +1,16 @@
 {
-  "site_version": "2.2.0",
-  "verified_at": "2026-11-15T09:18:00+00:00",
-  "scope": "basic_structural_and_browser_verification_per_user_request",
+  "site_version": "2.3.0",
+  "verified_at": "2026-11-15T10:36:00+00:00",
+  "scope": "basic_structural_nowcast_and_browser_verification_per_user_request",
   "model_tests": {
     "count": 18,
     "status": "PASS",
     "integrator_step_halving_max_diff_index": 0.00123
   },
-  "backend_parser_tests": {
-    "count": 14,
+  "backend_parser_and_nowcast_tests": {
+    "count": 17,
     "status": "PASS",
-    "live_official_sources_ok": 7,
+    "live_official_sources_ok": 9,
     "official_sources": [
       "ecb_fx",
       "us_treasury_yield",
@@ -18,11 +18,24 @@
       "nyfed_sofr",
       "cboe_vix",
       "tic_holdings",
-      "tic_transactions"
-    ]
+      "tic_transactions",
+      "fed_h41_custody",
+      "ust_auctions"
+    ],
+    "nowcast_anchor_period": "2026-08",
+    "nowcast_target_periods": [
+      "2026-09",
+      "2026-10",
+      "2026-11"
+    ],
+    "loocv_rmse_yi_usd": {
+      "official_holdings_chg": 404.1,
+      "bond_flow": 636.9,
+      "total_flow": 943.0
+    }
   },
   "browser_checks": {
-    "count": 24,
+    "count": 22,
     "status": "PASS",
     "viewports": [
       "1440x1080",
@@ -39,15 +52,14 @@
       "light",
       "dark"
     ],
-    "js_errors": 0,
-    "csv_38_lines_exact_match": true
+    "js_errors": 0
   },
   "upgrades_verified": [
-    "light_editorial_default_with_dark_theme_toggle",
-    "five_page_progressive_disclosure_overview_and_executive_brief",
-    "seven_official_zero_key_daily_and_monthly_sources",
-    "five_condition_reversal_readiness_checklist",
-    "deferred_sensitivity_fast_landing_load",
-    "v2_1_rk2_conservation_and_lp_partial_identification_preserved"
+    "nine_official_zero_key_public_sources_all_ok",
+    "fed_h41_weekly_custody_bridge_for_foreign_official_ust_holdings",
+    "hybrid_fiscaldata_and_treasurydirect_coupon_auction_sign_monotonic_ridge_bridge",
+    "same_chart_solid_realized_plus_dashed_80pct_ci_band_svg_rendering",
+    "honest_country_boundary_no_fabricated_cn_or_hk_single_month_point_estimates",
+    "auto_handoff_when_new_tic_month_is_published"
   ]
 }

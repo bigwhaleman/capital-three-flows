@@ -415,11 +415,49 @@ main { padding: 22px 20px 44px; outline: none; }
 .check-target { font-size: 12px; color: var(--text-2); }
 .check-target small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 
-/* Market Thermometer Mini Cards */
+/* Market Thermometer Mini Cards & Nowcast Panel */
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+}
+.nowcast-panel { padding: 18px 20px; }
+.nowcast-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.nowcast-chart-box {
+  background: var(--panel-alt);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.nowcast-chart-box h2 { font-size: 14.5px; }
+.nowcast-table th, .nowcast-table td { padding: 9px 11px; }
+.nowcast-table tr.is-anchor td { background: var(--panel-alt); font-weight: 550; }
+.nowcast-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-left: 6px;
+  font-family: sans-serif;
+}
+.nowcast-pill.real { background: var(--cyan-bg); color: var(--cyan); border: 1px solid var(--cyan-border); }
+.nowcast-pill.est { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.nowcast-pill.mtd { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.nowcast-toggle.active {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+  color: var(--blue);
+  font-weight: 600;
+}
+.nowcast-toggle.disabled-note {
+  opacity: .72;
+  cursor: default;
 }
 .mini-card {
   background: var(--panel);
@@ -743,14 +781,13 @@ td:not(:first-child) { font-family: var(--mono); }
 
 /* Responsive Breakpoints */
 @media (max-width: 1180px) {
-  .hero-cards, .scenario-cards { grid-template-columns: repeat(2, 1fr); }
-  .market-grid { grid-template-columns: repeat(3, 1fr); }
+  .hero-cards, .scenario-cards, .market-grid { grid-template-columns: repeat(2, 1fr); }
   .work-grid { grid-template-columns: minmax(0, 1fr) 270px; }
   .source-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 900px) {
-  .hero-banner, .checklist-summary, .brief-grid, .sub-grid, .drivers-grid, .id-grid, .work-grid {
+  .hero-banner, .checklist-summary, .brief-grid, .sub-grid, .nowcast-grid, .drivers-grid, .id-grid, .work-grid {
     grid-template-columns: 1fr;
   }
   .parameter-panel { position: static; }
