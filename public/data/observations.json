@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-15T08:20:33+00:00",
+  "generated_at": "2026-11-15T09:30:48+00:00",
   "site_version": "2.2.0",
   "observation_policy": "Daily market rates/prices and monthly cross-border transactions are strictly separated. No flow is fabricated from price or holdings changes.",
   "sources": {
@@ -9,7 +9,7 @@
       "name": "欧洲中央银行参考汇率（90日序列）",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-15T08:20:29+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -400,7 +400,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:29+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "9811ba2a93131661323bac357cf1a839d6b8111bc2a98d6339073dc5e7fba94a",
       "error": null,
       "fixture": false
@@ -410,7 +410,7 @@
       "name": "美国财政部每日国债收益率曲线",
       "frequency": "交易日日频",
       "id": "us_treasury_yield",
-      "last_attempt_at": "2026-11-15T08:20:29+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -801,7 +801,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:29+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "7940584cb08f8aa016d786b71015d85e3226612c7a3756129c064b32fa9795da",
       "error": null,
       "fixture": false
@@ -811,7 +811,7 @@
       "name": "中国外汇交易中心国债收益率（SDDS）",
       "frequency": "交易日日频",
       "id": "cn_gov_yield",
-      "last_attempt_at": "2026-11-15T08:20:29+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -939,8 +939,8 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:29+00:00",
-      "sha256": "b022221b0cfae82fa20aa63cfe70326abbae538d3a98733f3046e6b2fa27fbb8",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
+      "sha256": "beecac810756ecddfaa40446215cb818696e99b9e3da7d7b1304465aa6ee7cc5",
       "error": null,
       "fixture": false
     },
@@ -949,7 +949,7 @@
       "name": "纽约联储隔夜担保融资利率（SOFR）",
       "frequency": "交易日日频",
       "id": "nyfed_sofr",
-      "last_attempt_at": "2026-11-15T08:20:29+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-11-12",
       "metrics": [
         {
@@ -1272,7 +1272,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:29+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "0ef8a4658ca433366c8e905e65c61e851e5877734986c0a600dea2cb983c60e3",
       "error": null,
       "fixture": false
@@ -1282,7 +1282,7 @@
       "name": "Cboe 标普500波动率指数（VIX）",
       "frequency": "交易日日频",
       "id": "cboe_vix",
-      "last_attempt_at": "2026-11-15T08:20:30+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "status": "ok",
       "error": null,
       "metrics": [
@@ -1538,7 +1538,7 @@
         }
       ],
       "period": "2026-11-13",
-      "last_success_at": "2026-11-15T08:20:30+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "d4e2b1199951501b7757814b6e1c2356394922a7ea8ef16d85c3a4596e6e2c2d",
       "fixture": false
     },
@@ -1547,7 +1547,7 @@
       "name": "美国财政部 TIC 表 5（美债存量）",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-15T08:20:31+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -1690,7 +1690,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:31+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "e5de973b1a6f13c8ec95707d665ce107f53f467db10d7a2d991677ee67d1de11",
       "error": null,
       "fixture": false
@@ -1700,7 +1700,7 @@
       "name": "美国财政部 TIC 表 1（跨境净买卖）",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-15T08:20:31+00:00",
+      "last_attempt_at": "2026-11-15T09:30:47+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -2191,7 +2191,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T08:20:31+00:00",
+      "last_success_at": "2026-11-15T09:30:47+00:00",
       "sha256": "dbdb9fb062d5f435aa625fd225bd42288029df46be33e84759c4741961e91180",
       "error": null,
       "fixture": false,
