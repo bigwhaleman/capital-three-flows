@@ -1,6 +1,6 @@
-# 资本三流耦合模型 V2.1：机制诊断、双向闭环与部分识别升级
+# 资本三流耦合模型与直观看板 V2.2：机制闭环、日频信号与部分识别说明
 
-研究与升级日期：2026-11-15（基于 2026-11-14 V2.0 与 2026-11-13 结构底稿升级）。性质：**可运行的结构情景动力学模型，附独立的真实交易/持仓观测层与精确部分识别区间；不是已校准的经验预测器。**
+研究与升级日期：2026-11-15（基于 V2.1 七资产二阶守恒引擎升级为 V2.2 直观看板版）。性质：**可运行的结构情景动力学模型 + 7 路官方日频/月频实测看板 + 精确部分识别区间；不是已校准的经验预测器。**
 
 ## 1. 对 V2.0 模型的七项关键诊断与直接改进
 
@@ -84,11 +84,15 @@ $$J_{UC} \in \big[\max(-\bar{f}_{CU},\; -\overline{n}_U-\bar{f}_R,\; \underline{
 
 ---
 
-## 6. 官方观测源与验证范围
+## 6. 官方观测源（7 路零密钥直连）与验证范围
 
-- 欧洲中央银行参考汇率：`https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml`
+- 欧洲中央银行参考汇率（含 90 日历史与六币美元指数）：`https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml`
+- 美国财政部每日国债收益率曲线（10Y / 2Y / 3M）：`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2026/all?type=daily_treasury_yield_curve&page&_format=csv`
+- 中国外汇交易中心 CFETS 国债收益率曲线（10Y / 1Y）：`https://www.chinamoney.com.cn/ags/ms/cm-u-bk-currency/SddsIntrRateGovYldHis`
+- 纽约联邦储备银行隔夜有担保融资利率（SOFR 利率与成交量）：`https://markets.newyorkfed.org/api/rates/secured/sofr/last/60.json`
+- 芝加哥期权交易所 Cboe VIX 日频历史：`https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv`
 - 美国财政部 TIC 表 5（含中国内地、香港、全球总计与外国官方储备分项）：`https://ticdata.treasury.gov/Publish/slt_table5.txt`
 - 美国财政部 TIC 表 1（全球、内地、香港对美长期证券净交易、股债分项、估值与对账残差）：`https://ticdata.treasury.gov/Publish/slt_table1.txt`
 - 静态核实档案（2026-11-13 核验封存）：国家外汇管理局《2026年上半年中国国际收支报告》及 9 月跨境资金答记者问。
 
-基础验证共覆盖 **18 项代数/数值/部分识别测试** 与 **13 项官方数据解析/故障保留测试**，证明结构守恒、无绕道套利、双向反馈方向、RK2 收敛及识别区间精确性；不冒称样本外预测胜率或投资回测。
+基础验证共覆盖 **18 项代数/数值/部分识别测试**、**14 项官方数据解析/故障保留测试** 与 **24 项浏览器桌面/移动端核验**，证明结构守恒、无绕道套利、双向反馈方向、RK2 收敛、7 路官方源解析及识别区间精确性；不冒称样本外预测胜率或投资回测。

@@ -1,0 +1,53 @@
+{
+  "site_version": "2.2.0",
+  "verified_at": "2026-11-15T09:18:00+00:00",
+  "scope": "basic_structural_and_browser_verification_per_user_request",
+  "model_tests": {
+    "count": 18,
+    "status": "PASS",
+    "integrator_step_halving_max_diff_index": 0.00123
+  },
+  "backend_parser_tests": {
+    "count": 14,
+    "status": "PASS",
+    "live_official_sources_ok": 7,
+    "official_sources": [
+      "ecb_fx",
+      "us_treasury_yield",
+      "cn_gov_yield",
+      "nyfed_sofr",
+      "cboe_vix",
+      "tic_holdings",
+      "tic_transactions"
+    ]
+  },
+  "browser_checks": {
+    "count": 24,
+    "status": "PASS",
+    "viewports": [
+      "1440x1080",
+      "390x844"
+    ],
+    "pages_checked": [
+      "overview",
+      "brief",
+      "model",
+      "observed",
+      "method"
+    ],
+    "themes_checked": [
+      "light",
+      "dark"
+    ],
+    "js_errors": 0,
+    "csv_38_lines_exact_match": true
+  },
+  "upgrades_verified": [
+    "light_editorial_default_with_dark_theme_toggle",
+    "five_page_progressive_disclosure_overview_and_executive_brief",
+    "seven_official_zero_key_daily_and_monthly_sources",
+    "five_condition_reversal_readiness_checklist",
+    "deferred_sensitivity_fast_landing_load",
+    "v2_1_rk2_conservation_and_lp_partial_identification_preserved"
+  ]
+}

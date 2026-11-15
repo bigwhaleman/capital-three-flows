@@ -43,4 +43,5 @@ if __name__=='__main__':
  if not args.no_update:threading.Thread(target=updater,daemon=True,name='fixed-source-updater').start()
  else:STATE['mode']='static-server';STATE['refresh_interval_seconds']=None
  print(f'Capital Flow Lab at http://{args.host}:{args.port}/',flush=True)
- ThreadingHTTPServer((args.host,args.port),partial(Handler,directory=str(PUBLIC))).serve_forever()
+ class ReuseServer(ThreadingHTTPServer):allow_reuse_address=True
+ ReuseServer((args.host,args.port),partial(Handler,directory=str(PUBLIC))).serve_forever()

@@ -1,7 +1,15 @@
 import unittest,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from update_data import parse_transactions, parse_holdings
+from update_data import (
+ parse_transactions,
+ parse_holdings,
+ parse_ecb,
+ parse_us_yield,
+ parse_cn_yield,
+ parse_sofr,
+ parse_vix,
+)
 
 class ExpandedDataTests(unittest.TestCase):
  def raw(self,latest='20'):
@@ -30,3 +38,18 @@ class ExpandedDataTests(unittest.TestCase):
   self.assertEqual(len(d['metrics']),4)
   self.assertAlmostEqual(d['history'][-1]['official'],37556.0)
   self.assertAlmostEqual(d['history'][-1]['private'],93317.0-37556.0)
+ def test_daily_yields_sofr_vix_and_ecb_history(self):
+  us=parse_us_yield(b'Date,"3 Mo","2 Yr","10 Yr"\n11/12/2026,4.30,4.85,5.12\n11/13/2026,4.32,4.88,5.15\n')
+  self.assertEqual(us['period'],'2026-11-13')
+  self.assertEqual(us['metrics'][0]['value'],5.15)
+  cn=parse_cn_yield(b'{"records":[{"dateString":"2026-11-12","oneRate":"1.18","tenRate":"1.60"},{"dateString":"2026-11-13","oneRate":"1.1766","tenRate":"1.5922"}]}')
+  self.assertEqual(cn['period'],'2026-11-13')
+  self.assertEqual(cn['metrics'][0]['value'],1.5922)
+  sofr=parse_sofr(b'{"refRates":[{"effectiveDate":"2026-11-12","type":"SOFR","percentRate":3.90,"volumeInBillions":3138}]}')
+  self.assertEqual(sofr['metrics'][0]['value'],3.90)
+  self.assertEqual(sofr['metrics'][1]['value'],31380.0)
+  vix=parse_vix(b'DATE,OPEN,HIGH,LOW,CLOSE\n11/12/2026,18.3,19.3,17.3,18.70\n11/13/2026,18.8,20.9,17.6,19.30\n')
+  self.assertEqual(vix['metrics'][0]['value'],19.3)
+  ecb=parse_ecb(b'<Envelope><Cube><Cube time="2026-11-13"><Cube currency="USD" rate="1.1052"/><Cube currency="JPY" rate="176.83"/><Cube currency="GBP" rate="0.83559"/><Cube currency="CAD" rate="1.5758"/><Cube currency="SEK" rate="11.1075"/><Cube currency="CHF" rate="0.9266"/><Cube currency="CNY" rate="7.3738"/><Cube currency="HKD" rate="8.6714"/></Cube></Cube></Envelope>')
+  self.assertEqual(len(ecb['metrics']),3)
+  self.assertTrue(90<ecb['metrics'][2]['value']<120)
