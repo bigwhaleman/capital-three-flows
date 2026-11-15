@@ -1,7 +1,7 @@
 import unittest,sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from update_data import parse_transactions
+from update_data import parse_transactions, parse_holdings
 
 class ExpandedDataTests(unittest.TestCase):
  def raw(self,latest='20'):
@@ -22,3 +22,11 @@ class ExpandedDataTests(unittest.TestCase):
   self.assertIsNone(r['treasury'])
  def test_latest_missing_not_backdated_success(self):
   with self.assertRaises(ValueError):parse_transactions(self.raw('n.a.'))
+ def test_holdings_official_vs_private_decomposition(self):
+  raw=(b'Table 5\nBillions of dollars\nCountry\t2026-08\t2026-07\n'
+       b'China, Mainland\t590.7\t618.0\nHong Kong\t261.5\t258.3\n'
+       b'Grand Total\t9331.7\t9248.4\nOf Which: Foreign Official\t3755.6\t3773.1\n')
+  d=parse_holdings(raw)
+  self.assertEqual(len(d['metrics']),4)
+  self.assertAlmostEqual(d['history'][-1]['official'],37556.0)
+  self.assertAlmostEqual(d['history'][-1]['private'],93317.0-37556.0)

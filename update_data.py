@@ -54,10 +54,29 @@ def parse_holdings(raw):
   values=[number(x)*10 for x in row[1:1+len(periods)]] # billion USD -> 亿美元
   if any(v<0 or v>2_000_000 for v in values): raise ValueError('TIC5 holdings range guard failed')
   data[name]=dict(zip(periods,values))
+ for opt in ['Grand Total','Of Which: Foreign Official']:
+  row=next((s.split('\t') for s in lines if s.startswith(opt+'\t')),None)
+  if row and len(row)>=len(periods)+1:
+   try:
+    vals=[number(x)*10 for x in row[1:1+len(periods)]]
+    if all(0<=v<=2_000_000 for v in vals): data[opt]=dict(zip(periods,vals))
+   except ValueError: pass
  latest=max(periods);metrics=[]
  for name,id_,label in [('China, Mainland','cn_treasury','中国内地持有美国国债'),('Hong Kong','hk_treasury','中国香港持有美国国债')]:
   metrics.append({'id':id_,'name':label,'value':round(data[name][latest],3),'unit':'亿美元','kind':'月末持仓','note':'月末存量，不是净交易；含托管地归属误差。持仓变化不能直接解释为卖出、回流或最终受益人转向。'})
- return {'period':latest,'metrics':metrics,'history':[{'period':p,'cn':data['China, Mainland'][p],'hk':data['Hong Kong'][p]} for p in sorted(periods)]}
+ if 'Grand Total' in data:
+  metrics.append({'id':'world_treasury','name':'外国投资者持有美国国债合计','value':round(data['Grand Total'][latest],3),'unit':'亿美元','kind':'月末持仓','note':'TIC 表 5 Grand Total；包含外国官方储备与私人/托管机构。'})
+ if 'Of Which: Foreign Official' in data:
+  metrics.append({'id':'official_treasury','name':'其中：外国官方机构持有美债','value':round(data['Of Which: Foreign Official'][latest],3),'unit':'亿美元','kind':'月末持仓','note':'官方储备与主权机构口径；可与私人部门存量变化对照结构分化。'})
+ hist=[]
+ for p in sorted(periods):
+  item={'period':p,'cn':round(data['China, Mainland'][p],3),'hk':round(data['Hong Kong'][p],3)}
+  if 'Grand Total' in data: item['world']=round(data['Grand Total'][p],3)
+  if 'Of Which: Foreign Official' in data:
+   item['official']=round(data['Of Which: Foreign Official'][p],3)
+   if 'Grand Total' in data: item['private']=round(data['Grand Total'][p]-data['Of Which: Foreign Official'][p],3)
+  hist.append(item)
+ return {'period':latest,'metrics':metrics,'history':hist}
 def parse_transactions(raw):
  text=raw.decode('utf-8-sig');lines=text.splitlines()
  if 'Millions of dollars' not in text[:900] or 'Table 1' not in text[:150]: raise ValueError('TIC1 unit/schema changed')
@@ -135,7 +154,7 @@ def update(fixture_dir=None):
   with ThreadPoolExecutor(max_workers=3) as ex:
    jobs={k:ex.submit(fetch_one,k,sources.get(k),fixture_dir) for k in SOURCES}
    current={k:j.result() for k,j in jobs.items()}
-  out={'schema_version':1,'generated_at':utcnow(),'site_version':'2.0.0','observation_policy':'No flow is inferred from price or holdings changes. Historical research archive is separate.','sources':current}
+  out={'schema_version':1,'generated_at':utcnow(),'site_version':'2.1.0','observation_policy':'No flow is inferred from price or holdings changes. Historical research archive is separate.','sources':current}
   atomic_json(dest,out)
   return out
 if __name__=='__main__':

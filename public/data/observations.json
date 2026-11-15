@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-15T06:26:05+00:00",
-  "site_version": "2.0.0",
+  "generated_at": "2026-11-15T06:38:59+00:00",
+  "site_version": "2.1.0",
   "observation_policy": "No flow is inferred from price or holdings changes. Historical research archive is separate.",
   "sources": {
     "ecb_fx": {
@@ -9,7 +9,7 @@
       "name": "欧洲中央银行参考汇率",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-15T06:26:04+00:00",
+      "last_attempt_at": "2026-11-15T06:38:57+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -31,7 +31,7 @@
       ],
       "history": [],
       "status": "ok",
-      "last_success_at": "2026-11-15T06:26:04+00:00",
+      "last_success_at": "2026-11-15T06:38:57+00:00",
       "sha256": "4185371ddfed8d83c5cf3d83e48dfa6943da4820f988697fa7f8988a3c0018d7",
       "error": null,
       "fixture": false
@@ -41,7 +41,7 @@
       "name": "美国财政部 TIC 表 5",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-15T06:26:04+00:00",
+      "last_attempt_at": "2026-11-15T06:38:57+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -59,77 +59,132 @@
           "unit": "亿美元",
           "kind": "月末持仓",
           "note": "月末存量，不是净交易；含托管地归属误差。持仓变化不能直接解释为卖出、回流或最终受益人转向。"
+        },
+        {
+          "id": "world_treasury",
+          "name": "外国投资者持有美国国债合计",
+          "value": 93317.0,
+          "unit": "亿美元",
+          "kind": "月末持仓",
+          "note": "TIC 表 5 Grand Total；包含外国官方储备与私人/托管机构。"
+        },
+        {
+          "id": "official_treasury",
+          "name": "其中：外国官方机构持有美债",
+          "value": 37556.0,
+          "unit": "亿美元",
+          "kind": "月末持仓",
+          "note": "官方储备与主权机构口径；可与私人部门存量变化对照结构分化。"
         }
       ],
       "history": [
         {
           "period": "2025-08",
           "cn": 6997.0,
-          "hk": 2519.0
+          "hk": 2519.0,
+          "world": 92491.0,
+          "official": 39198.0,
+          "private": 53293.0
         },
         {
           "period": "2025-09",
           "cn": 6992.0,
-          "hk": 2389.0
+          "hk": 2389.0,
+          "world": 92382.0,
+          "official": 38726.0,
+          "private": 53656.0
         },
         {
           "period": "2025-10",
           "cn": 6877.0,
-          "hk": 2520.0
+          "hk": 2520.0,
+          "world": 92313.0,
+          "official": 38664.0,
+          "private": 53649.0
         },
         {
           "period": "2025-11",
           "cn": 6839.0,
-          "hk": 2566.0
+          "hk": 2566.0,
+          "world": 93504.0,
+          "official": 39123.0,
+          "private": 54381.0
         },
         {
           "period": "2025-12",
           "cn": 6844.0,
-          "hk": 2684.0
+          "hk": 2684.0,
+          "world": 92705.0,
+          "official": 38777.0,
+          "private": 53928.0
         },
         {
           "period": "2026-01",
           "cn": 6953.0,
-          "hk": 2599.0
+          "hk": 2599.0,
+          "world": 92891.0,
+          "official": 39418.0,
+          "private": 53473.0
         },
         {
           "period": "2026-02",
           "cn": 6942.0,
-          "hk": 2692.0
+          "hk": 2692.0,
+          "world": 94873.0,
+          "official": 40096.0,
+          "private": 54777.0
         },
         {
           "period": "2026-03",
           "cn": 6533.0,
-          "hk": 2783.0
+          "hk": 2783.0,
+          "world": 93524.0,
+          "official": 39030.0,
+          "private": 54494.0
         },
         {
           "period": "2026-04",
           "cn": 6511.0,
-          "hk": 2691.0
+          "hk": 2691.0,
+          "world": 93501.0,
+          "official": 39045.0,
+          "private": 54456.0
         },
         {
           "period": "2026-05",
           "cn": 6593.0,
-          "hk": 2719.0
+          "hk": 2719.0,
+          "world": 93685.0,
+          "official": 38459.0,
+          "private": 55226.0
         },
         {
           "period": "2026-06",
           "cn": 6334.0,
-          "hk": 2558.0
+          "hk": 2558.0,
+          "world": 92985.0,
+          "official": 37781.0,
+          "private": 55204.0
         },
         {
           "period": "2026-07",
           "cn": 6180.0,
-          "hk": 2583.0
+          "hk": 2583.0,
+          "world": 92484.0,
+          "official": 37731.0,
+          "private": 54753.0
         },
         {
           "period": "2026-08",
           "cn": 5907.0,
-          "hk": 2615.0
+          "hk": 2615.0,
+          "world": 93317.0,
+          "official": 37556.0,
+          "private": 55761.0
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T06:26:04+00:00",
+      "last_success_at": "2026-11-15T06:38:57+00:00",
       "sha256": "e5de973b1a6f13c8ec95707d665ce107f53f467db10d7a2d991677ee67d1de11",
       "error": null,
       "fixture": false
@@ -139,7 +194,7 @@
       "name": "美国财政部 TIC 表 1",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-15T06:26:04+00:00",
+      "last_attempt_at": "2026-11-15T06:38:57+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -630,7 +685,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T06:26:04+00:00",
+      "last_success_at": "2026-11-15T06:38:57+00:00",
       "sha256": "dbdb9fb062d5f435aa625fd225bd42288029df46be33e84759c4741961e91180",
       "error": null,
       "fixture": false,
