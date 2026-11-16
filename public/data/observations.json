@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-15T18:49:17+00:00",
+  "generated_at": "2026-11-16T06:24:19+00:00",
   "site_version": "2.3.0",
   "observation_policy": "Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.",
   "sources": {
@@ -9,7 +9,7 @@
       "name": "欧洲中央银行参考汇率（90日序列）",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-15T18:49:15+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -400,7 +400,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:15+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "9811ba2a93131661323bac357cf1a839d6b8111bc2a98d6339073dc5e7fba94a",
       "error": null,
       "fixture": false
@@ -410,7 +410,7 @@
       "name": "美国财政部每日国债收益率曲线",
       "frequency": "交易日日频",
       "id": "us_treasury_yield",
-      "last_attempt_at": "2026-11-15T18:49:15+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-11-13",
       "metrics": [
         {
@@ -801,7 +801,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:15+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "7940584cb08f8aa016d786b71015d85e3226612c7a3756129c064b32fa9795da",
       "error": null,
       "fixture": false
@@ -811,13 +811,13 @@
       "name": "中国外汇交易中心国债收益率（SDDS）",
       "frequency": "交易日日频",
       "id": "cn_gov_yield",
-      "last_attempt_at": "2026-11-15T18:49:15+00:00",
-      "period": "2026-11-13",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
+      "period": "2026-11-16",
       "metrics": [
         {
           "id": "cn_10y",
           "name": "中国 10 年期国债收益率",
-          "value": 1.5922,
+          "value": 1.6218,
           "unit": "%",
           "kind": "日频到期收益率",
           "note": "中国外汇交易中心（CFETS）SDDS 公布国债收益率，可与美债 10Y 构成双端名义利差对照。"
@@ -825,7 +825,7 @@
         {
           "id": "cn_1y",
           "name": "中国 1 年期国债收益率",
-          "value": 1.1766,
+          "value": 1.1773,
           "unit": "%",
           "kind": "日频短端收益率",
           "note": "中国外汇交易中心 SDDS 1 年期国债收益率。"
@@ -931,11 +931,16 @@
           "period": "2026-11-13",
           "y10": 1.5922,
           "y1": 1.1766
+        },
+        {
+          "period": "2026-11-16",
+          "y10": 1.6218,
+          "y1": 1.1773
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:15+00:00",
-      "sha256": "fe10d2f5cd23206870643a4098f56b3d828d9f2899caf705fd0165ce263bc31f",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
+      "sha256": "43e8a49470bfd36e82b60f74a08249f3a5dc07877936bcdb8f716cfb77c1b44f",
       "error": null,
       "fixture": false
     },
@@ -944,7 +949,7 @@
       "name": "纽约联储隔夜担保融资利率（SOFR）",
       "frequency": "交易日日频",
       "id": "nyfed_sofr",
-      "last_attempt_at": "2026-11-15T18:49:15+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-11-12",
       "metrics": [
         {
@@ -1267,7 +1272,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:15+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "0ef8a4658ca433366c8e905e65c61e851e5877734986c0a600dea2cb983c60e3",
       "error": null,
       "fixture": false
@@ -1277,7 +1282,7 @@
       "name": "Cboe 标普500波动率指数（VIX）",
       "frequency": "交易日日频",
       "id": "cboe_vix",
-      "last_attempt_at": "2026-11-15T18:49:15+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "status": "ok",
       "error": null,
       "metrics": [
@@ -1533,7 +1538,7 @@
         }
       ],
       "period": "2026-11-13",
-      "last_success_at": "2026-11-15T18:49:15+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "d4e2b1199951501b7757814b6e1c2356394922a7ea8ef16d85c3a4596e6e2c2d",
       "fixture": false
     },
@@ -1542,7 +1547,7 @@
       "name": "美国财政部 TIC 表 5（美债存量）",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-15T18:49:16+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -1685,7 +1690,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:16+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "e5de973b1a6f13c8ec95707d665ce107f53f467db10d7a2d991677ee67d1de11",
       "error": null,
       "fixture": false
@@ -1695,7 +1700,7 @@
       "name": "美国财政部 TIC 表 1（跨境净买卖）",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-15T18:49:16+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-08",
       "metrics": [
         {
@@ -2186,7 +2191,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:16+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "dbdb9fb062d5f435aa625fd225bd42288029df46be33e84759c4741961e91180",
       "error": null,
       "fixture": false,
@@ -3620,7 +3625,7 @@
       "name": "美联储 H.4.1 周报（外国官方托管证券）",
       "frequency": "周频（滞后约 3 天）",
       "id": "fed_h41_custody",
-      "last_attempt_at": "2026-11-15T18:49:16+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-11-11",
       "metrics": [
         {
@@ -4181,7 +4186,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:16+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "455378a2232d96568025da37905ba0de69d7fa2f47e21f8bc5498288e0a90f0d",
       "error": null,
       "fixture": false
@@ -4191,7 +4196,7 @@
       "name": "美国财政部中长期国债拍卖（海外间接投标）",
       "frequency": "按场次实时更新（月均 8–9 场附息债）",
       "id": "ust_auctions",
-      "last_attempt_at": "2026-11-15T18:49:16+00:00",
+      "last_attempt_at": "2026-11-16T06:24:18+00:00",
       "period": "2026-11-12",
       "metrics": [
         {
@@ -4777,7 +4782,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-15T18:49:16+00:00",
+      "last_success_at": "2026-11-16T06:24:18+00:00",
       "sha256": "d415addabbdc9840049e632e9cf6e203dd53e1e11bffb9bbb64fe9e869e71103",
       "error": null,
       "fixture": false
