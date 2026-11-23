@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T07:33:02+00:00",
+  "generated_at": "2026-11-23T23:51:46+00:00",
   "site_version": "2.3.0",
   "observation_policy": "Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.",
   "sources": {
@@ -9,13 +9,13 @@
       "name": "欧洲中央银行参考汇率（90日序列）",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
-      "period": "2026-11-20",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
+      "period": "2026-11-23",
       "metrics": [
         {
           "id": "usd_cny",
           "name": "美元 / 人民币参考汇率",
-          "value": 6.677707,
+          "value": 6.664686,
           "unit": "人民币元/美元",
           "kind": "日频参考价",
           "note": "由同日欧元参考价交叉计算（CNY/EUR ÷ USD/EUR）；不是成交价或未来升值预期。"
@@ -23,7 +23,7 @@
         {
           "id": "usd_hkd",
           "name": "美元 / 港币参考汇率",
-          "value": 7.838944,
+          "value": 7.840936,
           "unit": "港元/美元",
           "kind": "日频参考价",
           "note": "由同日欧元参考价交叉计算；只作汇率环境观测，不代表跨境资金净流。"
@@ -31,19 +31,13 @@
         {
           "id": "usd_index",
           "name": "美元对六大主要货币指数",
-          "value": 103.653,
+          "value": 104.087,
           "unit": "指数点",
           "kind": "日频合成参考",
           "note": "由欧央行同日欧/日/英/加/瑞/典六币参考价按经典几何权重合成，衡量美元广泛强弱。"
         }
       ],
       "history": [
-        {
-          "period": "2026-08-31",
-          "usd_cny": 6.719731,
-          "usd_hkd": 7.837875,
-          "usd_index": 99.551
-        },
         {
           "period": "2026-09-01",
           "usd_cny": 6.722261,
@@ -397,11 +391,17 @@
           "usd_cny": 6.677707,
           "usd_hkd": 7.838944,
           "usd_index": 103.653
+        },
+        {
+          "period": "2026-11-23",
+          "usd_cny": 6.664686,
+          "usd_hkd": 7.840936,
+          "usd_index": 104.087
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
-      "sha256": "9fdd74ca9b9a59d3851e86046befa6a4ebc18684909361713fb8bdc5bcce873d",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
+      "sha256": "015e148f22c7c017168fc99fd6d2bd5de452e7f313e83ec03db8d7ac30854ef2",
       "error": null,
       "fixture": false
     },
@@ -410,8 +410,8 @@
       "name": "美国财政部每日国债收益率曲线",
       "frequency": "交易日日频",
       "id": "us_treasury_yield",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
-      "period": "2026-11-20",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
+      "period": "2026-11-23",
       "metrics": [
         {
           "id": "us_10y",
@@ -432,19 +432,13 @@
         {
           "id": "us_3m",
           "name": "美国 3 个月国库券收益率",
-          "value": 4.32,
+          "value": 4.37,
           "unit": "%",
           "kind": "日频短端收益率",
           "note": "美国财政部 CMT 3M，反映美元短端无风险套息水平。"
         }
       ],
       "history": [
-        {
-          "period": "2026-08-26",
-          "y10": 4.66,
-          "y2": 4.19,
-          "m3": 3.85
-        },
         {
           "period": "2026-08-27",
           "y10": 4.67,
@@ -798,11 +792,17 @@
           "y10": 4.92,
           "y2": 4.63,
           "m3": 4.32
+        },
+        {
+          "period": "2026-11-23",
+          "y10": 4.92,
+          "y2": 4.63,
+          "m3": 4.37
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
-      "sha256": "3a48daf1c889672fedc4643d8c2fc0a46b99eadf4af5a8780b11996eaff11df4",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
+      "sha256": "4b472c2a553424ad529d00aa1153d12c379b2a7fc76834cef144bda387e0fa7d",
       "error": null,
       "fixture": false
     },
@@ -811,7 +811,7 @@
       "name": "中国外汇交易中心国债收益率（SDDS）",
       "frequency": "交易日日频",
       "id": "cn_gov_yield",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
       "period": "2026-11-23",
       "metrics": [
         {
@@ -939,8 +939,8 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
-      "sha256": "4602723474a3ce50a6b867d12be05e57ed23572acc14826c9edbbe8ffc71bbbb",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
+      "sha256": "a50349311b3b8975ac0dae5e86548297758ef64f61b6d8ce2daeb160dc9f8287",
       "error": null,
       "fixture": false
     },
@@ -949,13 +949,13 @@
       "name": "纽约联储隔夜担保融资利率（SOFR）",
       "frequency": "交易日日频",
       "id": "nyfed_sofr",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
-      "period": "2026-11-19",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
+      "period": "2026-11-20",
       "metrics": [
         {
           "id": "sofr",
           "name": "美元隔夜担保融资利率（SOFR）",
-          "value": 3.91,
+          "value": 3.92,
           "unit": "%",
           "kind": "日频货币市场利率",
           "note": "纽约联储公布的美元隔夜回购基准利率，直接刻画“停留在美元现金池”的套息回报锚。"
@@ -963,18 +963,13 @@
         {
           "id": "sofr_volume",
           "name": "SOFR 隔夜回购成交量",
-          "value": 31610.0,
+          "value": 31410.0,
           "unit": "亿美元/日",
           "kind": "日频市场成交规模",
           "note": "美国隔夜国债回购成交额（非跨境净流），反映美元货币市场深度。"
         }
       ],
       "history": [
-        {
-          "period": "2026-08-25",
-          "sofr": 3.66,
-          "volume": 29160.0
-        },
         {
           "period": "2026-08-26",
           "sofr": 3.64,
@@ -1269,11 +1264,16 @@
           "period": "2026-11-19",
           "sofr": 3.91,
           "volume": 31610.0
+        },
+        {
+          "period": "2026-11-20",
+          "sofr": 3.92,
+          "volume": 31410.0
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
-      "sha256": "82bcaef1f9cedb19eeb8574520f8ac7167bb05889ae6fa04d147e3f1de4621f8",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
+      "sha256": "ebd822a8e9c05369648076bed32b7e9451b23be5d20924a799a1ff4bf180610f",
       "error": null,
       "fixture": false
     },
@@ -1282,7 +1282,7 @@
       "name": "Cboe 标普500波动率指数（VIX）",
       "frequency": "交易日日频",
       "id": "cboe_vix",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
       "status": "ok",
       "error": null,
       "metrics": [
@@ -1538,7 +1538,7 @@
         }
       ],
       "period": "2026-11-20",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
       "sha256": "2a3b180ffb268b7805c17567c0ac7787c74898b0d99f62f550be67eafffd1c16",
       "fixture": false
     },
@@ -1547,7 +1547,7 @@
       "name": "美国财政部 TIC 表 5（美债存量）",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
       "period": "2026-09",
       "metrics": [
         {
@@ -1690,7 +1690,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
       "sha256": "18d2dece0370bf48929341ca3805a5482533520ae42485942a73081fd6cf8392",
       "error": null,
       "fixture": false
@@ -1700,7 +1700,7 @@
       "name": "美国财政部 TIC 表 1（跨境净买卖）",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
       "period": "2026-09",
       "metrics": [
         {
@@ -2191,7 +2191,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
       "sha256": "a47fd809d67a2bb51ef86135916b0f52af84d2830a9c439c8a35ffdee332f7c8",
       "error": null,
       "fixture": false,
@@ -3625,7 +3625,7 @@
       "name": "美联储 H.4.1 周报（外国官方托管证券）",
       "frequency": "周频（滞后约 3 天）",
       "id": "fed_h41_custody",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
       "period": "2026-11-18",
       "metrics": [
         {
@@ -4186,7 +4186,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
       "sha256": "f3ab1ef7dc84128922b4caa7c231da3b2f6f6d14e5106faff39961d2784bdf4f",
       "error": null,
       "fixture": false
@@ -4196,13 +4196,13 @@
       "name": "美国财政部中长期国债拍卖（海外间接投标）",
       "frequency": "按场次实时更新（月均 8–9 场附息债）",
       "id": "ust_auctions",
-      "last_attempt_at": "2026-11-23T07:33:01+00:00",
-      "period": "2026-11-19",
+      "last_attempt_at": "2026-11-23T23:51:45+00:00",
+      "period": "2026-11-23",
       "metrics": [
         {
           "id": "ust_indirect_share",
           "name": "美债附息拍卖海外间接获配占比（月初至今）",
-          "value": 60.99,
+          "value": 58.16,
           "unit": "%",
           "kind": "一级市场外资需求指标",
           "note": "美国财政部中长期附息国债（Note & Bond）拍卖中 Indirect Bidders 获配占比；外国央行与海外机构主要经此通道认购。"
@@ -4210,15 +4210,15 @@
         {
           "id": "ust_indirect_amt",
           "name": "美债附息拍卖海外间接获配额（月初至今）",
-          "value": 970.72,
+          "value": 1321.01,
           "unit": "亿美元",
           "kind": "一级市场获配规模",
-          "note": "2026-11 已完成 5 场附息国债拍卖累计获配额（截至 2026-11-19）。"
+          "note": "2026-11 已完成 6 场附息国债拍卖累计获配额（截至 2026-11-23）。"
         },
         {
           "id": "ust_pd_share",
           "name": "美债拍卖一级交易商兜底占比（月初至今）",
-          "value": 9.8,
+          "value": 9.98,
           "unit": "%",
           "kind": "一级市场承接压力指标",
           "note": "Primary Dealers 被动承接比例越高，通常意味着海外与终端买盘认购意愿越弱。"
@@ -4634,26 +4634,17 @@
         },
         {
           "period": "2026-11",
-          "through_date": "2026-11-19",
-          "auction_count": 5,
-          "comp_amt": 1591.53,
-          "indirect_amt": 970.72,
-          "primary_dealer_amt": 156.02,
-          "fima_amt": 0.05,
-          "indirect_share": 60.99,
-          "primary_dealer_share": 9.8
+          "through_date": "2026-11-23",
+          "auction_count": 6,
+          "comp_amt": 2271.2,
+          "indirect_amt": 1321.01,
+          "primary_dealer_amt": 226.7,
+          "fima_amt": 3.1,
+          "indirect_share": 58.16,
+          "primary_dealer_share": 9.98
         }
       ],
       "recent_auctions": [
-        {
-          "auction_date": "2026-09-24",
-          "security_type": "Note",
-          "security_term": "7-Year",
-          "comp_amt": 434.81,
-          "indirect_amt": 248.7,
-          "indirect_share": 57.2,
-          "primary_dealer_share": 12.53
-        },
         {
           "auction_date": "2026-10-06",
           "security_type": "Note",
@@ -4779,11 +4770,20 @@
           "indirect_amt": 129.74,
           "indirect_share": 68.56,
           "primary_dealer_share": 6.03
+        },
+        {
+          "auction_date": "2026-11-23",
+          "security_type": "Note",
+          "security_term": "2-Year",
+          "comp_amt": 679.68,
+          "indirect_amt": 350.29,
+          "indirect_share": 51.54,
+          "primary_dealer_share": 10.4
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-23T07:33:01+00:00",
-      "sha256": "d3682030b7dc63727339d9e996e615dff4d665ac40c84076177108d58bc4cc15",
+      "last_success_at": "2026-11-23T23:51:45+00:00",
+      "sha256": "8b255f75ce4cd6bf761a195b070ed651106063637caf549b370166c0a4927d6c",
       "error": null,
       "fixture": false
     }
@@ -4792,7 +4792,7 @@
     "status": "ok",
     "anchor_period": "2026-09",
     "latest_h41_date": "2026-11-18",
-    "latest_auction_date": "2026-11-19",
+    "latest_auction_date": "2026-11-23",
     "next_tic_release_hint": "美国财政部通常于每月月中（约第 15–18 日）发布滞后两个月的 TIC 正式月报；新月报落地后，本估算窗口自动向后顺延。",
     "country_boundary_note": "美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 9—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。",
     "methodology": "双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间。",
@@ -4834,23 +4834,23 @@
       {
         "period": "2026-11",
         "label": "2026-11 月初至今估算",
-        "through_date": "2026-11-19",
+        "through_date": "2026-11-23",
         "is_partial_month": true,
-        "auction_count": 5,
-        "comp_amt": 1591.53,
-        "indirect_amt": 970.72,
-        "indirect_share": 60.99,
-        "primary_dealer_share": 9.8,
+        "auction_count": 6,
+        "comp_amt": 2271.2,
+        "indirect_amt": 1321.01,
+        "indirect_share": 58.16,
+        "primary_dealer_share": 9.98,
         "h41_through_date": "2026-11-18",
         "h41_custody_ust": 25440.11,
         "h41_d_ust": -245.86,
-        "bond": 663.7,
-        "bond_low80": -307.6,
-        "bond_high80": 1635.0,
+        "bond": 595.9,
+        "bond_low80": -375.4,
+        "bond_high80": 1567.2,
         "equity": 854.4,
-        "total": 1518.1,
-        "total_low80": 102.3,
-        "total_high80": 2933.8,
+        "total": 1450.3,
+        "total_low80": 34.5,
+        "total_high80": 2866.0,
         "official_holdings": 36395.2,
         "official_low80": 35535.6,
         "official_high80": 37254.8,
