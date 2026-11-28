@@ -1,10 +1,43 @@
-import { ASSETS, COLORS, INITIAL, DEFAULT, PRESETS, FACTORS, IDIO, COV, config, simulate, events, sensitivity, identifyBounds } from './engine.mjs';
+import { ASSETS, COLORS, INITIAL, DEFAULT, PRESETS, FACTORS, IDIO, COV, config, simulate, events, sensitivity, identifyBounds, calibrateFromObservations } from './engine.mjs';
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (v, d = 2) => Number.isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
 const sgn = (v, d = 2) => Number.isFinite(v) ? (v > 1e-7 ? '+' : '') + fmt(Math.abs(v) < 1e-7 ? 0 : v, d) : '—';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function fmtMonthLabel(ym) {
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return ym || '当期';
+  return `${Number(ym.slice(5))}月`;
+}
+
+function periodMeta() {
+  const ticPeriod = obs?.sources?.tic_transactions?.period || '';
+  const ticMon = fmtMonthLabel(ticPeriod);
+  const ms = obs?.nowcast?.months || [];
+  const firstM = ms[0]?.period || '';
+  const lastM = ms.at(-1)?.period || '';
+  let ncRange = '近月';
+  if (ms.length === 1) {
+    ncRange = fmtMonthLabel(firstM);
+  } else if (ms.length > 1) {
+    const y1 = firstM.slice(0, 4), y2 = lastM.slice(0, 4);
+    ncRange = y1 === y2
+      ? `${Number(firstM.slice(5))}—${Number(lastM.slice(5))}月`
+      : `${y1.slice(2)}年${Number(firstM.slice(5))}月—${y2.slice(2)}年${Number(lastM.slice(5))}月`;
+  }
+  const ncStartMon = firstM ? fmtMonthLabel(firstM) : '近月';
+  const ncEndMon = lastM ? fmtMonthLabel(lastM) : ticMon;
+  const worldHist = obs?.sources?.tic_transactions?.regions?.world?.history || [];
+  const recent12 = worldHist.slice(-12);
+  let peakRow = worldHist.at(-1) || null;
+  for (const r of recent12) {
+    if (Number.isFinite(r.total) && (!peakRow || r.total > peakRow.total)) peakRow = r;
+  }
+  const peakMon = peakRow?.period ? fmtMonthLabel(peakRow.period) : ticMon;
+  const peakVal = peakRow?.total ?? null;
+  return { ticPeriod, ticMon, ncRange, ncStartMon, ncEndMon, peakMon, peakVal };
+}
 
 const PAGES = ['overview', 'brief', 'model', 'observed', 'method'];
 
@@ -205,7 +238,23 @@ function chart(target, series, { min = null, max = null, includeZero = true, ref
     s += `<line x1="${x(splitIndex).toFixed(2)}" y1="${t}" x2="${x(splitIndex).toFixed(2)}" y2="${H - b}" stroke="${tc.zero}" stroke-width="1.2" stroke-dasharray="3 3"/>`;
   }
   const stride = Math.max(1, Math.ceil((n - 1) / (W < 420 ? 4 : 6)));
-  for (let i = 0; i < n; i++) if (i % stride === 0 || i === n - 1) {
+  const minGapPx = W < 460 ? 54 : 52;
+  const tickIndices = [];
+  for (let i = 0; i < n; i++) {
+    if (i === 0 || i === n - 1 || i % stride === 0) tickIndices.push(i);
+  }
+  const chosenTicks = [];
+  for (let k = 0; k < tickIndices.length; k++) {
+    const idx = tickIndices[k];
+    const xi = x(idx);
+    if (idx === n - 1) {
+      while (chosenTicks.length && xi - x(chosenTicks.at(-1)) < minGapPx) chosenTicks.pop();
+      chosenTicks.push(idx);
+    } else if (!chosenTicks.length || xi - x(chosenTicks.at(-1)) >= minGapPx) {
+      chosenTicks.push(idx);
+    }
+  }
+  for (const i of chosenTicks) {
     s += `<text x="${x(i)}" y="${H - 7}" text-anchor="middle" font-size="9.5" fill="${hasSplit && i > splitIndex ? tc.blue : tc.axis}" font-family="monospace">${esc(labels ? labels[i] : '+' + i + '月')}</text>`;
   }
   if (selection !== null) s += `<line x1="${x(selection)}" y1="${t}" x2="${x(selection)}" y2="${H - b}" stroke="${tc.zero}" stroke-dasharray="3 4"/>`;
@@ -249,9 +298,48 @@ function chart(target, series, { min = null, max = null, includeZero = true, ref
       }
     });
   }
-  el.innerHTML = s + '</svg>';
+  s += `<line class="hover-guide" x1="0" y1="${t}" x2="0" y2="${H - b}" stroke="${tc.blue}" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>`;
+  el.innerHTML = s + '</svg><div class="chart-tooltip" hidden></div>';
+  const svg = el.querySelector('svg');
+  const guide = el.querySelector('.hover-guide');
+  const tip = el.querySelector('.chart-tooltip');
+
+  const showHover = clientX => {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const svgX = (clientX - rect.left) * W / rect.width;
+    const idx = clamp(Math.round((svgX - l) / Math.max(1, W - l - r) * Math.max(1, n - 1)), 0, n - 1);
+    const gx = x(idx);
+    guide.setAttribute('x1', gx.toFixed(2));
+    guide.setAttribute('x2', gx.toFixed(2));
+    guide.setAttribute('opacity', '0.7');
+    const isEst = hasSplit && idx > splitIndex;
+    const lbl = labels ? labels[idx] : `第 ${idx} 月`;
+    const rowsHtml = series.map(ln => {
+      const v = ln.values[idx];
+      if (!Number.isFinite(v)) return '';
+      const d = Math.abs(hi - lo) > 30 ? 1 : 2;
+      return `<div class="tt-row"><span><i style="--c:${ln.color}"></i>${esc(ln.name)}</span><b>${fmt(v, d)}</b></div>`;
+    }).filter(Boolean).join('');
+    let ciHtml = '';
+    if (bands.length && Number.isFinite(bands[0].low?.[idx]) && Number.isFinite(bands[0].high?.[idx])) {
+      ciHtml = `<div class="tt-ci">80% 预测区间：[${fmt(bands[0].low[idx], 0)}, ${fmt(bands[0].high[idx], 0)}]</div>`;
+    }
+    tip.innerHTML = `<div class="tt-head"><span>${esc(lbl)}</span><span>${isEst ? '高频估算' : esc(unit.split('·')[0].trim())}</span></div>${rowsHtml}${ciHtml}`;
+    tip.hidden = false;
+    const relX = (gx / W) * rect.width;
+    const tipW = tip.offsetWidth || 190;
+    const leftPx = relX + 14 + tipW > rect.width ? Math.max(6, relX - tipW - 14) : relX + 14;
+    tip.style.left = `${leftPx.toFixed(0)}px`;
+  };
+
+  svg.addEventListener('pointermove', e => showHover(e.clientX));
+  svg.addEventListener('pointerleave', () => {
+    guide.setAttribute('opacity', '0');
+    tip.hidden = true;
+  });
   if (selection !== null) {
-    el.querySelector('svg').addEventListener('pointerdown', e => {
+    svg.addEventListener('pointerdown', e => {
       const rect = e.currentTarget.getBoundingClientRect();
       state.month = clamp(Math.round(((e.clientX - rect.left) * W / rect.width - l) / (W - l - r) * (n - 1)), 0, n - 1);
       stop();
@@ -334,6 +422,9 @@ function evaluateChecklist() {
   const ncMonths = obs?.nowcast?.months || [];
   const ncLatest = ncMonths.at(-1) || null;
   const h41CumDrop = ncMonths.reduce((acc, m) => acc + (Number.isFinite(m.h41_d_ust) ? m.h41_d_ust : 0), 0);
+  const vix = getMetric('cboe_vix', 'vix')?.value;
+  const vixDate = obs?.sources?.cboe_vix?.period || '—';
+  const pm = periodMeta();
   const usDate = obs?.sources?.us_treasury_yield?.period || '—';
   const cnDate = obs?.sources?.cn_gov_yield?.period || '—';
   const sofrDate = obs?.sources?.nyfed_sofr?.period || '—';
@@ -372,10 +463,10 @@ function evaluateChecklist() {
       name: '④ 官方主权储备先行降敞口',
       why: '历史周期中，官方储备与长线机构通常先于私人套息盘调整美元久期',
       reading: Number.isFinite(cnHoldDelta12m) ? `${sgn(cnHoldDelta12m, 0)} 亿美元` : '—',
-      sub: `内地托管美债年变动 (${holdLast?.period || '—'}) · H.4.1 近两月半 ${sgn(h41CumDrop, 0)} 亿`,
+      sub: `内地托管美债年变动 (${holdLast?.period || '—'}) · H.4.1 ${pm.ncRange} ${sgn(h41CumDrop, 0)} 亿`,
       target: '观察标尺：官方与内地托管存量趋势性压降',
       detail: ncLatest && Number.isFinite(ncLatest.official_holdings)
-        ? `H.4.1 桥接估算 ${ncLatest.period} 外国官方存量再降至 ~${fmt(ncLatest.official_holdings, 0)} 亿`
+        ? `H.4.1 桥接估算 ${ncLatest.period} 外国官方存量${(ncLatest.official_chg ?? 0) <= 0 ? '再降至' : '变动至'} ~${fmt(ncLatest.official_holdings, 0)} 亿`
         : (Number.isFinite(offDelta1m) ? `最新单月外国官方美债存量 ${sgn(offDelta1m, 0)} 亿美元` : '存量含价格重估与转托管'),
       state: !Number.isFinite(cnHoldDelta12m) ? 'watch' : cnHoldDelta12m < -200 ? 'ok' : cnHoldDelta12m < 0 ? 'watch' : 'bad'
     },
@@ -388,16 +479,26 @@ function evaluateChecklist() {
       sub: ncLatest ? `TIC 实测 (${ticDate}) → 高频估算 (${ncLatest.period})` : `TIC 表 1 全球外资净买卖 · ${ticDate}`,
       target: '观察标尺：月净买入降至 +500 亿内或转净卖出',
       detail: ncLatest
-        ? `9—11月估算回落至 ${ncMonths.map(m => sgn(m.total, 0)).join(' / ')} 亿（较8月峰值腰斩降温，但仍大于 +500 亿）`
+        ? `${pm.ncRange}估算为 ${ncMonths.map(m => sgn(m.total, 0)).join(' / ')} 亿（较${pm.peakMon}峰值明显降温，但仍大于 +500 亿）`
         : (worldTx ? `当月净买美股 ${sgn(worldTx.equity, 0)} 亿、美债 ${sgn(worldTx.bond, 0)} 亿` : '待读取'),
       state: !worldTx ? 'watch' : (ncLatest ? ncLatest.total : worldTx.total) <= 0 ? 'ok' : (ncLatest ? ncLatest.total : worldTx.total) <= 500 ? 'watch' : 'bad'
+    },
+    {
+      name: '⑥ 美元流动性未触发恐慌挤兑',
+      why: 'VIX 飙升至 30+ 往往触发向心强售换美元现金，反而推迟跨国再配置',
+      reading: Number.isFinite(vix) ? `VIX ${fmt(vix, 2)}` : '—',
+      sub: `Cboe 日频收盘 · ${vixDate}`,
+      target: '经验常态线：低于 22 点（>30 为挤兑警报）',
+      detail: !Number.isFinite(vix) ? '待读取' : vix < 22 ? '处于低波动常态区间，未见流动性挤兑' : vix < 30 ? '处于偏高警惕区，防向心抽水反复' : '已触发高波动警报，警惕先换美元现金强售',
+      state: !Number.isFinite(vix) ? 'watch' : vix < 22 ? 'ok' : vix < 30 ? 'watch' : 'bad'
     }
   ];
 
   const okCount = items.filter(x => x.state === 'ok').length;
   const watchCount = items.filter(x => x.state === 'watch').length;
   const badCount = items.filter(x => x.state === 'bad').length;
-  return { items, okCount, watchCount, badCount, spreadBp, us10, cn10, sofr, cnyNow, dxy, worldTx, holdFirst, holdLast, ncMonths, ncLatest, h41CumDrop };
+  const totalCount = items.length;
+  return { items, okCount, watchCount, badCount, totalCount, spreadBp, us10, cn10, sofr, cnyNow, dxy, vix, worldTx, holdFirst, holdLast, ncMonths, ncLatest, h41CumDrop };
 }
 
 function renderNowcastPanel(tc, worldHist, holdH) {
@@ -436,8 +537,9 @@ function renderNowcastPanel(tc, worldHist, holdH) {
       height: 225
     });
     const avgEst = ms.reduce((a, m) => a + m.total, 0) / ms.length;
+    const pm = periodMeta();
     $('#nowcast-flow-caption').innerHTML =
-      `<span style="--c:${tc.blue};margin-right:14px">长期证券合计（8月实测 ${sgn(anchorVal, 0)} 亿 → 近月估算均值 ${sgn(avgEst, 0)} 亿/月）</span>` +
+      `<span style="--c:${tc.blue};margin-right:14px">长期证券合计（${pm.ticMon}实测 ${sgn(anchorVal, 0)} 亿 → ${pm.ncRange}估算均值 ${sgn(avgEst, 0)} 亿/月）</span>` +
       `<span style="--c:${tc.amber}">其中长期债券（拍卖间接投标+官方托管桥接）</span>`;
   }
 
@@ -499,6 +601,20 @@ function renderNowcastPanel(tc, worldHist, holdH) {
   }).join('');
 
   $('#nowcast-table-body').innerHTML = anchorRow + estRows;
+  const btEl = $('#nowcast-backtest');
+  const bt = nc.backtest || [];
+  if (btEl) {
+    if (bt.length && Number.isFinite(val.ci80_empirical_coverage_pct)) {
+      const lastBt = bt.at(-1);
+      const hitTag = lastBt.in_80_ci ? '✓ 落入 80% 预测带' : '× 落在区间外';
+      btEl.innerHTML =
+        `<div><span class="backtest-pill">LOOCV 样本外回验</span> 过去 <b>${val.ci80_total}</b> 个月实际落入 80% 预测区间占比 <b>${fmt(val.ci80_empirical_coverage_pct, 1)}%</b>（${val.ci80_hits}/${val.ci80_total}） · 样本内校准 VIX 折价 β=<b>${fmt(val.vix_equity_beta ?? 0, 2)}</b></div>` +
+        `<div>上期实测核对（<b>${esc(lastBt.period)}</b>）：样本外估算 <b>${sgn(lastBt.pred_total, 0)}</b> 亿 [${sgn(lastBt.low80, 0)}, ${sgn(lastBt.high80, 0)}] vs TIC 实测 <b>${sgn(lastBt.actual_total, 0)}</b> 亿（${hitTag}）</div>`;
+      btEl.hidden = false;
+    } else {
+      btEl.hidden = true;
+    }
+  }
   $('#nowcast-footnote').textContent =
     `交叉验证精度（历史留一法 LOOCV）：官方存量月变动 RMSE ±${fmt(val.official_holdings_loocv_rmse, 0)} 亿美元（H.4.1 传导弹性 β=${fmt(val.official_beta_h41, 2)}），长期债净流 RMSE ±${fmt(val.bond_flow_loocv_rmse, 0)} 亿，长期证券总净流 RMSE ±${fmt(val.total_flow_loocv_rmse, 0)} 亿。` +
     ` ${nc.country_boundary_note || ''} ${nc.next_tic_release_hint || ''}`;
@@ -526,28 +642,38 @@ function renderOverviewAndBrief() {
   const ncAvgTotal = ncMonths.length ? ncMonths.reduce((a, m) => a + m.total, 0) / ncMonths.length : null;
 
   // Regime banner & top pill
-  const regimeLabel = ck.okCount >= 4
+  const regimeLabel = ck.okCount >= 5
     ? '条件基本齐备 · 关注实质出池窗口'
-    : (ck.worldTx?.total > 500 && (ck.spreadBp ?? -300) < -200)
-      ? `高息套息降温但未转负 · 条件已现 ${ck.okCount}/5 项`
-      : `拉锯过渡期 · 逆转条件已现 ${ck.okCount}/5 项`;
+    : (Number.isFinite(vix) && vix >= 30)
+      ? `高波动向心警惕 · 条件已现 ${ck.okCount}/${ck.totalCount} 项`
+      : (ck.worldTx?.total > 500 && (ck.spreadBp ?? -300) < -200)
+        ? `高息套息降温但未转负 · 条件已现 ${ck.okCount}/${ck.totalCount} 项`
+        : `拉锯过渡期 · 逆转条件已现 ${ck.okCount}/${ck.totalCount} 项`;
   $('#regime-text').textContent = regimeLabel;
 
   const dailyDate = obs.sources.us_treasury_yield?.period || obs.sources.ecb_fx?.period || '—';
   const ticDate = obs.sources.tic_transactions?.period || '—';
   const hfDate = obs.nowcast?.latest_auction_date || obs.nowcast?.latest_h41_date || dailyDate;
-  $('#hero-dates').textContent = `日频截至 ${dailyDate} · 周频托管/美债拍卖截至 ${hfDate} · TIC 月报实测 ${ticDate}（附 9—11月估算）`;
+  const pm = periodMeta();
+  const h41Verb = ck.h41CumDrop <= 0 ? '再降' : '回升';
+  const h41Abs = fmt(Math.abs(ck.h41CumDrop), 0);
+  const aucLatestShare = getMetric('ust_auctions', 'ust_indirect_share')?.value;
+  const aucShareTxt = Number.isFinite(aucLatestShare) ? `${fmt(aucLatestShare, 1)}%` : '~60%';
+  const peakPhrase = (pm.peakVal !== null && pm.peakMon !== pm.ticMon)
+    ? `由 ${pm.peakMon}峰值（${sgn(pm.peakVal, 0)} 亿）回落至 ${pm.ticMon}实测 ${sgn(worldLast?.total, 0)} 亿、${pm.ncRange}估算约 ${sgn(ncAvgTotal, 0)} 亿美元/月`
+    : `由 ${pm.ticMon}实测（${sgn(worldLast?.total, 0)} 亿）高频变化至 ${pm.ncRange}约 ${sgn(ncAvgTotal, 0)} 亿美元/月`;
+  $('#hero-dates').textContent = `日频截至 ${dailyDate} · 周频托管/美债拍卖截至 ${hfDate} · TIC 月报实测 ${ticDate}${ncLatest ? `（附 ${pm.ncRange}估算）` : ''}`;
   $('#hero-title').textContent = ncLatest
-    ? `外资对美净买由 8月峰值（${sgn(worldLast?.total, 0)} 亿）高频降温至 9—11月约 ${sgn(ncAvgTotal, 0)} 亿美元/月，官方托管美债再降 ${fmt(Math.abs(ck.h41CumDrop), 0)} 亿；但 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂仍锁住私人套息盘。`
+    ? `外资对美净买${peakPhrase}，官方托管美债${h41Verb} ${h41Abs} 亿；但 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂仍锁住私人套息盘。`
     : `外资整体仍在净买入美股美债（${sgn(worldLast?.total, 0)} 亿美元/月），但“官方降敞口、私人追高息”明显分化；全面转向仍卡在 ${fmt(Math.abs(ck.spreadBp ?? 0), 0)} bp 利差倒挂。`;
-  $('#hero-desc').textContent = `日频端：10Y 美债 ${fmt(ck.us10, 2)}%、中债 ${fmt(ck.cn10, 2)}%、隔夜美元现金 SOFR ${fmt(ck.sofr, 2)}%；高频桥接端：美联储 H.4.1 周报与美债拍卖显示 9—11月外资认购热度较 8月腰斩回落、外国官方储备持续减持，但私人资金受高利差吸引尚未转为净撤出。`;
+  $('#hero-desc').textContent = `日频端：10Y 美债 ${fmt(ck.us10, 2)}%、中债 ${fmt(ck.cn10, 2)}%、隔夜美元现金 SOFR ${fmt(ck.sofr, 2)}%、VIX ${fmt(vix, 2)} 点；高频桥接端：附息美债拍卖间接投标占比最新回落至 ${aucShareTxt}，美联储 H.4.1 周报显示 ${pm.ncRange}官方托管${h41Verb} ${h41Abs} 亿，私人资金受高利差吸引尚未转为净撤出。`;
 
   $('#hero-side').innerHTML = [
-    ['当前所处阶段', '官方持续减仓 · 私人流入放缓'],
-    ['逆转五条件进度', `${ck.okCount} 项已具备 · ${ck.watchCount} 项半松动 · ${ck.badCount} 项未达`],
+    ['当前所处阶段', Number.isFinite(vix) && vix >= 25 ? '官方减仓 · 高波动降温期' : '官方持续减仓 · 私人流入放缓'],
+    ['逆转六条件进度', `${ck.okCount} 项已具备 · ${ck.watchCount} 项半松动 · ${ck.badCount} 项未达`],
     ['中美 10Y 利差 / SOFR', `${sgn(ck.spreadBp, 1)} bp / ${fmt(ck.sofr, 2)}%`],
     [`TIC 实测 (${ticDate})`, `${sgn(worldLast?.total, 0)} 亿美元/月`],
-    ['9—11月高频估算均值', ncAvgTotal !== null ? `~${sgn(ncAvgTotal, 0)} 亿美元/月` : '—']
+    [`${pm.ncRange}高频估算均值`, ncAvgTotal !== null ? `~${sgn(ncAvgTotal, 0)} 亿美元/月` : '—']
   ].map(([k, v]) => `<div class="hero-kv"><span>${k}</span><b>${esc(v)}</b></div>`).join('');
 
   // Section 1: Big 4 Cards
@@ -557,14 +683,14 @@ function renderOverviewAndBrief() {
       title: '跨境吸金总量（实测 + 高频估算）',
       badge: ncLatest ? `实测 ${ticDate} + 估算至 ${ncLatest.period}` : `TIC 月报 · ${ticDate}`,
       num: sgn(worldLast?.total, 0),
-      unit: '亿美元 (8月实测)',
+      unit: `亿美元 (${pm.ticMon}实测)`,
       color: tc.blue,
       sub: ncMonths.length
-        ? `9—11月高频估算：${ncMonths.map(m => `${m.period.slice(5)}月 ${sgn(m.total, 0)}`).join(' · ')} 亿`
+        ? `${pm.ncRange}高频估算：${ncMonths.map(m => `${Number(m.period.slice(5))}月 ${sgn(m.total, 0)}`).join(' · ')} 亿`
         : `美股 ${sgn(worldLast?.equity, 0)} 亿 · 美债 ${sgn(worldLast?.bond, 0)} 亿${Number.isFinite(dTx) ? `（较上月 ${sgn(dTx, 0)} 亿）` : ''}`,
       spark: sparkline([...worldHist.slice(-18).map(x => x.total), ...ncMonths.map(m => m.total)], tc.blue),
       verdict: ncLatest
-        ? '美债拍卖间接投标占比自 65% 回落至 ~60%，近两月半外资净买入较 8月峰值降温逾半，但中枢仍为正。'
+        ? `附息美债拍卖间接投标占比已降至 ${aucShareTxt}，近月外资净买入较 ${pm.peakMon}峰值显著降温，但中枢仍为正。`
         : '全球外国居民当月仍在净买入美国长期证券，尚未出现总量层面的集中撤出。'
     },
     {
@@ -575,7 +701,7 @@ function renderOverviewAndBrief() {
       color: tc.red,
       sub: `中债 ${fmt(ck.cn10, 2)}% − 美债 ${fmt(ck.us10, 2)}%${Number.isFinite(spreadDelta20) ? `（近20交易日 ${sgn(spreadDelta20, 1)} bp）` : ''}`,
       spark: sparkline(spreadSeries.map(x => x.spreadBp), tc.red),
-      verdict: '美债 5%+ 与美元隔夜现金 3.90% 构成套息高墙，是当前阻碍私人资金回流的头号阻力。'
+      verdict: `美债 ${fmt(ck.us10, 2)}% 与美元隔夜现金 ${fmt(ck.sofr, 2)}% 构成套息高墙，是当前阻碍私人资金回流的头号阻力。`
     },
     {
       title: '换仓强度与市场恐慌度',
@@ -585,28 +711,30 @@ function renderOverviewAndBrief() {
       color: tc.cyan,
       sub: `VIX 波动率 ${fmt(vix, 2)} 点 · 美元六币指数 ${fmt(ck.dxy, 2)}`,
       spark: sparkline(worldHist.slice(-24).map(x => x.intensity), tc.cyan),
-      verdict: `VIX 处于 ${vix < 22 ? '常态区间（未触发流动性恐慌挤兑）' : '偏高区间'}，当前资金流向主要由利差驱动。`
+      verdict: `VIX 处于 ${vix < 22 ? '常态区间（未触发流动性恐慌挤兑）' : vix >= 30 ? '高波动挤兑警报区' : '偏高警惕区'}，当前资金流向受利差与避险流动性双重约束。`
     },
     {
       title: '主体分化：官方周度托管 vs 私人盘',
       badge: `H.4.1 周报 · ${obs.sources.fed_h41_custody?.period || holdLast?.period || '—'}`,
       num: ncMonths.length ? sgn(ck.h41CumDrop, 0) : `${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)}`,
-      unit: ncMonths.length ? '亿美元(9月来官方托管变动)' : '亿美元(单月存量变动)',
+      unit: ncMonths.length ? `亿美元(${pm.ncStartMon}来官方托管变动)` : '亿美元(单月存量变动)',
       color: tc.purple,
-      sub: `8月官方/私人变动 ${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)} 亿 · 内地存量 ${fmt(holdLast?.cn, 0)} 亿`,
+      sub: `${pm.ticMon}官方/私人变动 ${sgn(dOff1m, 0)} / ${sgn(dPriv1m, 0)} 亿 · 内地存量 ${fmt(holdLast?.cn, 0)} 亿`,
       spark: sparkline((obs.sources.fed_h41_custody?.history || []).map(x => x.ust), tc.purple),
-      verdict: '美联储周报证实 9—11月外国央行托管美债连续 3 个月净减持，官方降久期与私人吃票息持续背离。'
+      verdict: ck.h41CumDrop <= 0
+        ? `美联储周报证实 ${pm.ncRange}外国央行托管美债持续净减持（${sgn(ck.h41CumDrop, 0)} 亿），官方降久期与私人吃票息持续背离。`
+        : `美联储周报显示 ${pm.ncRange}外国央行托管美债小幅回补（${sgn(ck.h41CumDrop, 0)} 亿），持续跟踪官方与私人仓位分化。`
     }
   ].map(c => `<article class="big-card" style="--c:${c.color}"><div class="big-card-top"><span>${c.title}</span><span class="big-card-badge">${esc(c.badge)}</span></div><div class="big-num">${c.num}<small>${c.unit}</small></div><div class="big-sub">${c.sub}</div><div class="spark-wrap">${c.spark}</div><div class="big-verdict">${c.verdict}</div></article>`).join('');
 
   // Section 2: Same-Chart Nowcast Panel (Solid Realized + Dashed 80% Interval)
   renderNowcastPanel(tc, worldHist, holdH);
 
-  // Section 3: 5-Condition Checklist
-  const okPct = (ck.okCount / 5) * 100, watchPct = (ck.watchCount / 5) * 100, badPct = (ck.badCount / 5) * 100;
+  // Section 3: 6-Condition Checklist
+  const okPct = (ck.okCount / ck.totalCount) * 100, watchPct = (ck.watchCount / ck.totalCount) * 100, badPct = (ck.badCount / ck.totalCount) * 100;
   $('#checklist-summary').innerHTML = `
     <div class="progress-box">
-      <b>已满足 ${ck.okCount} / 5 项 · 半松动 ${ck.watchCount} 项</b>
+      <b>已满足 ${ck.okCount} / ${ck.totalCount} 项 · 半松动 ${ck.watchCount} 项</b>
       <div class="progress-track">
         <span style="width:${okPct}%;background:${tc.cyan}"></span>
         <span style="width:${watchPct}%;background:${tc.amber}"></span>
@@ -619,7 +747,7 @@ function renderOverviewAndBrief() {
       </div>
     </div>
     <div class="bottleneck-box">
-      <strong>一句话看懂当前卡在哪：</strong>人民币汇率定力（${fmt(ck.cnyNow, 4)}）与官方储备持续减持美债（9月以来联储托管再降 ${fmt(Math.abs(ck.h41CumDrop), 0)} 亿）已到位，9—11月外资总净买也较 8月峰值降温过半；但<strong>中美 10Y 利差仍倒挂 ${fmt(Math.abs(ck.spreadBp ?? 0), 1)} bp</strong>、隔夜美元现金仍有 <strong>${fmt(ck.sofr, 2)}%</strong>，私人套息买盘尚未彻底熄火。
+      <strong>一句话看懂当前卡在哪：</strong>人民币汇率定力（${fmt(ck.cnyNow, 4)}）与官方储备调降美债（${pm.ncStartMon}来联储托管${h41Verb} ${h41Abs} 亿）已就位，${pm.ncRange}外资总净买也较 ${pm.peakMon}峰值显著降温；但<strong>中美 10Y 利差仍倒挂 ${fmt(Math.abs(ck.spreadBp ?? 0), 1)} bp</strong>、隔夜美元现金仍有 <strong>${fmt(ck.sofr, 2)}%</strong>${Number.isFinite(vix) && vix >= 22 ? `（且 VIX ${fmt(vix, 1)} 仍处警惕区）` : ''}，私人套息买盘尚未彻底熄火。
     </div>`;
 
   const stateTag = s => s === 'ok'
@@ -694,7 +822,7 @@ function renderOverviewAndBrief() {
     <div class="pool-item">
       <div class="pool-head"><span>外国投资者持有美国长期证券总盘子（${esc(worldLast?.period || '—')}）</span><b>${fmt(totalLtTrillion, 2)} 万亿美元</b></div>
       <div class="pool-bar"><span style="width:100%;background:linear-gradient(90deg,${tc.blue},${tc.cyan})"></span></div>
-      <div class="pool-note">8月实测净买 ${sgn(worldLast?.total, 1)} 亿（市值重估 ${sgn(worldLast?.valuation, 1)} 亿）；9—11月高频估算月均净买回落至 ~${sgn(ncAvgTotal, 0)} 亿美元。</div>
+      <div class="pool-note">${pm.ticMon}实测净买 ${sgn(worldLast?.total, 1)} 亿（市值重估 ${sgn(worldLast?.valuation, 1)} 亿）；${pm.ncRange}高频估算月均净买回落至 ~${sgn(ncAvgTotal, 0)} 亿美元。</div>
     </div>
     <div class="pool-item">
       <div class="pool-head"><span>外资持有美国国债主体拆分（合计 ${fmt(worldTreas / 10000, 2)} 万亿美元）</span><b>官方 ${fmt(offPct, 1)}% · 私人 ${fmt(privPct, 1)}%</b></div>
@@ -702,7 +830,7 @@ function renderOverviewAndBrief() {
         <span style="width:${offPct}%;background:${tc.cyan}" title="外国官方储备"></span>
         <span style="width:${privPct}%;background:${tc.amber}" title="外国私人与托管部门"></span>
       </div>
-      <div class="pool-note">🟢 8月官方存量 ${fmt(offTreas, 0)} 亿 → 11月 H.4.1 桥接估算 ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿 ｜ 🟠 私人部门 ${fmt(privTreas, 0)} 亿美元。</div>
+      <div class="pool-note">🟢 ${pm.ticMon}官方存量 ${fmt(offTreas, 0)} 亿 → ${pm.ncEndMon} H.4.1 桥接估算 ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿 ｜ 🟠 私人部门 ${fmt(privTreas, 0)} 亿美元。</div>
     </div>
     <div class="pool-item" style="margin-bottom:0">
       <div class="pool-head"><span>中国内地与香港名义托管美债对照（${esc(holdLast?.period || '—')}）</span><b>内地 ${fmt(holdLast?.cn, 0)} 亿 · 香港 ${fmt(holdLast?.hk, 0)} 亿</b></div>
@@ -710,7 +838,7 @@ function renderOverviewAndBrief() {
         <span style="width:${cnShare}%;background:${tc.cyan}"></span>
         <span style="width:${hkShare}%;background:${tc.blue}"></span>
       </div>
-      <div class="pool-note">合计占外资美债总盘 ${fmt(cnShare + hkShare, 1)}%；8月内地对美长期证券净交易 ${sgn(cnLast?.total, 1)} 亿、香港 ${sgn(hkLast?.total, 1)} 亿（高频周报无分国别明细）。</div>
+      <div class="pool-note">合计占外资美债总盘 ${fmt(cnShare + hkShare, 1)}%；${pm.ticMon}内地对美长期证券净交易 ${sgn(cnLast?.total, 1)} 亿、香港 ${sgn(hkLast?.total, 1)} 亿（高频周报无分国别明细）。</div>
     </div>`;
 
   // Section 5: 4 Scenario Plain-Language Cards
@@ -744,18 +872,18 @@ function renderOverviewAndBrief() {
   // Render Page 2: Executive Briefing (#brief-content)
   $('#brief-content').innerHTML = `
     <article class="brief-card">
-      <h2><span class="sec-num">1</span> 当期定论：实测 ＋ 近两月半高频桥接</h2>
-      <p style="font-size:13px;color:var(--text-2);line-height:1.65">截至日频 <b>${esc(dailyDate)}</b>、周频托管/拍卖 <b>${esc(hfDate)}</b> 与 TIC 月报 <b>${esc(ticDate)}</b>：9—11月外资对美净买入较 8月峰值<b>降温过半</b>，外国官方储备连续减持，但高利差下私人买盘尚未转负。</p>
+      <h2><span class="sec-num">1</span> 当期定论：实测 ＋ 近月高频桥接</h2>
+      <p style="font-size:13px;color:var(--text-2);line-height:1.65">截至日频 <b>${esc(dailyDate)}</b>、周频托管/拍卖 <b>${esc(hfDate)}</b> 与 TIC 月报 <b>${esc(ticDate)}</b>：${pm.ncRange}外资对美净买入较 ${pm.peakMon}峰值<b>显著降温</b>，外国官方储备连续减持，但高利差下私人买盘尚未转负。</p>
       <div class="brief-kpis">
-        <div class="brief-kpi"><span>8月实测 → 近月估算</span><b style="color:${tc.blue}">${sgn(worldLast?.total, 0)} → ${sgn(ncAvgTotal, 0)}</b><small>亿美元/月 (9—11月桥接均值)</small></div>
+        <div class="brief-kpi"><span>${pm.ticMon}实测 → 近月估算</span><b style="color:${tc.blue}">${sgn(worldLast?.total, 0)} → ${sgn(ncAvgTotal, 0)}</b><small>亿美元/月 (${pm.ncRange}桥接均值)</small></div>
         <div class="brief-kpi"><span>中美 10Y 利差</span><b style="color:${tc.red}">${sgn(ck.spreadBp, 0)} bp</b><small>中 ${fmt(ck.cn10, 2)}% / 美 ${fmt(ck.us10, 2)}%</small></div>
         <div class="brief-kpi"><span>美元隔夜 SOFR</span><b style="color:${tc.amber}">${fmt(ck.sofr, 2)}%</b><small>汇率 ${fmt(ck.cnyNow, 4)} · VIX ${fmt(vix, 1)}</small></div>
       </div>
-      <p class="micro">核心辨析：美债拍卖间接投标占比由 65% 降至 ~60% 印证边际降温；但隔夜美元现金仍近 4%，卖出风险资产的资金优先停泊美元货币基金。</p>
+      <p class="micro">核心辨析：美债拍卖间接投标占比最新降至 ${aucShareTxt} 印证边际降温；但隔夜美元现金仍近 ${fmt(ck.sofr, 2)}%，卖出风险资产的资金优先停泊美元货币基金。</p>
     </article>
 
     <article class="brief-card">
-      <h2><span class="sec-num">2</span> 逆转五项条件进度表（${ck.okCount}/5 已具备）</h2>
+      <h2><span class="sec-num">2</span> 逆转六项条件进度表（${ck.okCount}/${ck.totalCount} 已具备）</h2>
       <div class="table-scroll">
         <table>
           <thead><tr><th>条件项</th><th>最新实测 / 估算</th><th>参考观察线</th><th>判定</th></tr></thead>
@@ -769,11 +897,11 @@ function renderOverviewAndBrief() {
     <article class="brief-card">
       <h2><span class="sec-num">3</span> 存量与周度追踪：官方降久期 vs 私人追高息</h2>
       <div class="driver"><span>外资持有美国长期证券总规模（${esc(ticDate)}）</span><b>${fmt(totalLtTrillion, 2)} 万亿美元</b></div>
-      <div class="driver"><span>外国官方持有美债（8月实测 → 11月估算）</span><b>${fmt(offTreas, 0)} → ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿美元</b></div>
-      <div class="driver"><span>美联储 H.4.1 官方托管美债（截至 ${esc(obs.sources.fed_h41_custody?.period || '—')}）</span><b>${fmt(h41Ust, 0)} 亿美元（9月来 ${sgn(ck.h41CumDrop, 0)} 亿）</b></div>
+      <div class="driver"><span>外国官方持有美债（${pm.ticMon}实测 → ${pm.ncEndMon}估算）</span><b>${fmt(offTreas, 0)} → ~${fmt(ncLatest?.official_holdings ?? offTreas, 0)} 亿美元</b></div>
+      <div class="driver"><span>美联储 H.4.1 官方托管美债（截至 ${esc(obs.sources.fed_h41_custody?.period || '—')}）</span><b>${fmt(h41Ust, 0)} 亿美元（${pm.ncStartMon}来 ${sgn(ck.h41CumDrop, 0)} 亿）</b></div>
       <div class="driver"><span>中国内地 / 香港名义托管美债存量（${esc(ticDate)}）</span><b>${fmt(holdLast?.cn, 0)} 亿 / ${fmt(holdLast?.hk, 0)} 亿美元</b></div>
-      <div class="driver"><span>内地 / 香港 8月对美长期证券净买卖</span><b>${sgn(cnLast?.total, 1)} 亿 / ${sgn(hkLast?.total, 1)} 亿美元</b></div>
-      <p class="micro" style="margin-top:8px">口径提示：联储 H.4.1 与美债拍卖仅披露全球外国合计，不披露分国别明细；因此不伪造内地或香港 9—11月单月净买卖点估计。</p>
+      <div class="driver"><span>内地 / 香港 ${pm.ticMon}对美长期证券净买卖</span><b>${sgn(cnLast?.total, 1)} 亿 / ${sgn(hkLast?.total, 1)} 亿美元</b></div>
+      <p class="micro" style="margin-top:8px">口径提示：联储 H.4.1 与美债拍卖仅披露全球外国合计，不披露分国别明细；因此不伪造内地或香港 ${pm.ncRange}单月净买卖点估计。</p>
     </article>
 
     <article class="brief-card">
@@ -976,9 +1104,29 @@ function renderIdentification() {
 }
 
 for (const b of $$('[data-preset]')) b.addEventListener('click', () => {
-  stop(); state.preset = b.dataset.preset; state.p = config(state.preset); state.month = 1; recompute();
+  stop(); state.preset = b.dataset.preset; state.p = config(state.preset); state.month = 1;
+  if ($('#calibration-note')) $('#calibration-note').hidden = true;
+  recompute();
 });
-$('#reset').addEventListener('click', () => { stop(); state.p = config(state.preset); state.month = 1; recompute(); });
+$('#reset').addEventListener('click', () => {
+  stop(); state.p = config(state.preset); state.month = 1;
+  if ($('#calibration-note')) $('#calibration-note').hidden = true;
+  recompute();
+});
+$('#calibrate-live')?.addEventListener('click', () => {
+  if (!obs?.sources) return toast('请等待实时观测快照加载完成后再校准。');
+  stop();
+  const { overrides, notes } = calibrateFromObservations(obs);
+  state.p = config(state.preset, overrides);
+  state.month = 1;
+  recompute();
+  const noteEl = $('#calibration-note');
+  if (noteEl) {
+    noteEl.innerHTML = `<b>⚡ 已按今日实测锚定工作台起点（非参数拟合预测）：</b>${esc(notes.join(' · '))}。远端回报假设（gapEnd / bondEnd / tau）仍保留您当前的情景设定，可继续拖动滑块检验敏感性。`;
+    noteEl.hidden = false;
+  }
+  toast('已用今日实测利差、SOFR、VIX 与汇率折算校准起点参数！');
+});
 
 $$('[data-p]').forEach(el => el.addEventListener('input', () => {
   stop();
@@ -1140,12 +1288,35 @@ async function sync(manual = false) {
   try {
     const r = await fetch('data/observations.json', { cache: 'no-store', signal: AbortSignal.timeout(25000) });
     if (!r.ok) throw Error(r.status);
-    const d = await r.json();
+    let d = await r.json();
     if (d.schema_version !== 1 || !d.sources) throw Error('schema');
     obs = d;
     renderSnapshot();
     renderOverviewAndBrief();
     if (state.page === 'observed') renderObserved();
+    refreshAiContextPreview();
+
+    // When hosted on *.congjianai.com, also check the CORS-enabled 6h cloud feed in background
+    // and upgrade seamlessly if a newer official snapshot has been published since static deploy.
+    if (location.hostname.endsWith('.congjianai.com')) {
+      try {
+        const up = await fetch('https://bigwhaleman.github.io/capital-three-flows/data/observations.json', {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(4500)
+        });
+        if (up.ok) {
+          const cand = await up.json();
+          if (cand?.schema_version === 1 && cand?.sources && String(cand.generated_at || '') > String(obs.generated_at || '')) {
+            obs = cand;
+            renderSnapshot();
+            renderOverviewAndBrief();
+            if (state.page === 'observed') renderObserved();
+            refreshAiContextPreview();
+          }
+        }
+      } catch { /* keep bundled domestic snapshot silently */ }
+    }
+
     if (manual) toast('已同步最新快照；刷新页面不代表上游刚刚披露新一期数据。');
   } catch {
     $('#data-dot').classList.add('warn');
@@ -1260,9 +1431,10 @@ function renderObserved() {
   const useOverlay = canOverlay && state.showNowcast;
 
   const btnNc = $('#toggle-nowcast');
+  const pm = periodMeta();
   if (btnNc) {
     if (key !== 'world') {
-      btnNc.textContent = '分国别口径不伪造 9—11 月点估计';
+      btnNc.textContent = `分国别口径不伪造 ${pm.ncRange}点估计`;
       btnNc.classList.remove('active');
       btnNc.classList.add('disabled-note');
       btnNc.setAttribute('aria-pressed', 'false');
@@ -1278,7 +1450,7 @@ function renderObserved() {
   const world = regionData('world').at(-1), cn = regionData('cn').at(-1), hk = regionData('hk').at(-1);
   const ncAvg = ncMs.length ? ncMs.reduce((a, m) => a + m.total, 0) / ncMs.length : null;
   $('#observation-verdict').innerHTML = world
-    ? `<strong>${esc(world.period)} 官方实测净买 ${sgn(world.total, 0)} 亿美元${ncAvg !== null ? `；9—11月高频桥接估算降温至月均 ~${sgn(ncAvg, 0)} 亿美元` : ''}。</strong><p>8月全球对美长期证券净交易 ${sgn(world.total)} 亿美元（内地 ${sgn(cn?.total)}、香港 ${sgn(hk?.total)} 亿）；美联储 H.4.1 周度托管与附息美债拍卖显示 9—11月官方储备持续减仓、海外拍卖认购边际回落，但分国别明细须待财政部后续 TIC 月报正式披露。</p>`
+    ? `<strong>${esc(world.period)} 官方实测净买 ${sgn(world.total, 0)} 亿美元${ncAvg !== null ? `；${pm.ncRange}高频桥接估算降温至月均 ~${sgn(ncAvg, 0)} 亿美元` : ''}。</strong><p>${pm.ticMon}全球对美长期证券净交易 ${sgn(world.total)} 亿美元（内地 ${sgn(cn?.total)}、香港 ${sgn(hk?.total)} 亿）；美联储 H.4.1 周度托管与附息美债拍卖显示 ${pm.ncRange}官方储备持续减仓、海外拍卖认购边际回落，但分国别明细须待财政部后续 TIC 月报正式披露。</p>`
     : '官方序列尚不可用；不生成替代结论。';
 
   const ncLast = ncMs.at(-1);
@@ -1312,7 +1484,7 @@ function renderObserved() {
   const subEl = $('#observed-chart-sub');
   if (subEl) {
     subEl.textContent = useOverlay
-      ? '实线圆点为 TIC 表 1 已交割实测；右侧虚线空心点与青色阴影带为 9—11 月高频桥接估算及 80% 预测区间'
+      ? `实线圆点为 TIC 表 1 已交割实测；右侧虚线空心点与青色阴影带为 ${pm.ncRange}高频桥接估算及 80% 预测区间`
       : '月频实测 · 亿美元/月 · 零轴以上为净买入美国股票/债券，零轴以下为净卖出';
   }
 
@@ -1354,6 +1526,507 @@ $('#export-observed').addEventListener('click', () => {
 
 $('#reference-link').href = 'https://wbapp-wmbv2t6xmnfyoinbr26r7j.app.workbuddy.host/?sharecode=HASTKAG67H&shareId=80a6844c7a72455b80a8bc7ac9923217';
 
+/* ==================== V2.4 从简 Clarvy · 双模站内 AI 宏观问答控制器 ==================== */
+const AI_ONBOARD_KEY = 'three_flows_clarvy_onboarded_v1';
+const AI_CFG_KEY = 'three_flows_ai_cfg_v1';
+const AI_HIST_KEY = 'three_flows_ai_hist_v1';
+
+const AI_PROVIDERS = {
+  custom: { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  deepseek: { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  siliconflow: { baseUrl: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V3' },
+  openrouter: { baseUrl: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-chat-v3-0324:free' }
+};
+
+const aiState = {
+  open: false,
+  mode: 'direct',
+  busy: false,
+  aborter: null,
+  cfg: { provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', apiKey: '' },
+  messages: []
+};
+
+function renderMdSafe(text) {
+  const safe = esc(String(text || ''));
+  const codeBlocks = [];
+  const withPlaceholders = safe.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_, _lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre style="margin:6px 0;padding:8px 10px;border-radius:6px;background:rgba(15,23,42,.08);overflow-x:auto;font-size:11px"><code>${code.trim()}</code></pre>`);
+    return `@@CODEBLOCK_${idx}@@`;
+  });
+
+  const blocks = withPlaceholders.split(/\n{2,}/);
+  const htmlBlocks = blocks.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+    if (/^@@CODEBLOCK_\d+@@$/.test(trimmed)) return trimmed;
+    const lines = trimmed.split('\n');
+    const isUl = lines.every(l => /^\s*[-*•]\s+/.test(l));
+    const isOl = lines.every(l => /^\s*\d+[.)、]\s+/.test(l));
+    const fmtInline = s => s
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    if (isUl) {
+      return `<ul>${lines.map(l => `<li>${fmtInline(l.replace(/^\s*[-*•]\s+/, ''))}</li>`).join('')}</ul>`;
+    }
+    if (isOl) {
+      return `<ol>${lines.map(l => `<li>${fmtInline(l.replace(/^\s*\d+[.)、]\s+/, ''))}</li>`).join('')}</ol>`;
+    }
+    const formattedLines = lines.map(l => {
+      if (/^#{1,4}\s+/.test(l)) return `<b>${fmtInline(l.replace(/^#{1,4}\s+/, ''))}</b>`;
+      return fmtInline(l);
+    });
+    return `<p>${formattedLines.join('<br>')}</p>`;
+  });
+
+  return htmlBlocks.join('').replace(/@@CODEBLOCK_(\d+)@@/g, (_, i) => codeBlocks[Number(i)] || '');
+}
+
+function buildAiDataBrief() {
+  const lines = [];
+  if (obs?.sources) {
+    const ck = evaluateChecklist();
+    const pm = periodMeta();
+    const dailyDate = obs.sources.us_treasury_yield?.period || obs.sources.ecb_fx?.period || '—';
+    const hfDate = obs.nowcast?.latest_auction_date || obs.nowcast?.latest_h41_date || '—';
+    const vix = getMetric('cboe_vix', 'vix')?.value;
+    const worldLast = regionData('world').at(-1);
+    const cnLast = regionData('cn').at(-1);
+    const hkLast = regionData('hk').at(-1);
+    const holdLast = (obs.sources.tic_holdings?.history || []).at(-1);
+
+    lines.push(`[中美资本三流看板 V2.5 实时观测摘要]`);
+    lines.push(`- 数据时点：日频 ${dailyDate} ｜ 周频联储托管/国债拍卖 ${hfDate} ｜ 美国财政部 TIC 月报实测 ${pm.ticPeriod || '—'}`);
+    lines.push(`- 利率与汇率阻力：10Y美债 ${fmt(ck.us10, 2)}%，10Y中债 ${fmt(ck.cn10, 2)}%，中美10Y利差 ${sgn(ck.spreadBp, 1)} bp；美元隔夜 SOFR ${fmt(ck.sofr, 2)}%；USD/CNY 参考价 ${fmt(ck.cnyNow, 4)}；美元六币指数 ${fmt(ck.dxy, 2)}；VIX 波动率 ${fmt(vix, 2)} 点`);
+    if (worldLast) {
+      lines.push(`- TIC 月度实测（${worldLast.period}）：全球外资净买入美国长期证券 ${sgn(worldLast.total, 1)} 亿美元（美股 ${sgn(worldLast.equity, 1)} 亿 / 美债 ${sgn(worldLast.bond, 1)} 亿；近12月峰值 ${pm.peakMon} ${sgn(pm.peakVal, 0)} 亿）；内地净交易 ${sgn(cnLast?.total, 1)} 亿，香港 ${sgn(hkLast?.total, 1)} 亿`);
+    }
+    if (holdLast) {
+      lines.push(`- 美债存量结构（${holdLast.period}）：外资合计 ${fmt(holdLast.world, 0)} 亿美元（外国官方储备 ${fmt(holdLast.official, 0)} 亿 / 私人部门 ${fmt(holdLast.private, 0)} 亿；中国内地托管存量 ${fmt(holdLast.cn, 0)} 亿、香港 ${fmt(holdLast.hk, 0)} 亿）`);
+    }
+    if (ck.ncMonths?.length) {
+      const ncStr = ck.ncMonths.map(m => `${m.period}(总净买估算 ${sgn(m.total, 0)}亿, 80%区间[${sgn(m.total_low80, 0)}, ${sgn(m.total_high80, 0)}], 官方美债存量估算 ${fmt(m.official_holdings, 0)}亿, 拍卖间接获配 ${fmt(m.indirect_share, 1)}%, H.4.1托管月变动 ${sgn(m.h41_d_ust, 0)}亿)`).join('；');
+      lines.push(`- 高频桥接估算（${pm.ncRange}）：${ncStr}`);
+    }
+    lines.push(`- 逆转六条件核对进度：已具备 ${ck.okCount}/${ck.totalCount} 项 · 半松动 ${ck.watchCount} 项 · 未达标 ${ck.badCount} 项`);
+  }
+  if (ev && state.p) {
+    const fmtM = m => m === null ? '36个月内未触发' : `第${m}个月`;
+    lines.push(`- 当前「03 模型工作台」情景参数（预设 ${state.preset}）：远端股票回报差 gapEnd=${state.p.gapEnd}%/年，时间常数 tau=${state.p.tau}月，汇率预期 fx=${state.p.fx}%/年，现金冲击 cashShock=${state.p.cashShock}；推演节点：边际开关 T_S=${fmtM(ev.switch)}，直连翻正 T_flip=${fmtM(ev.flip)}，直连持续确认 T_confirm=${fmtM(ev.confirm)}，广义美元出池确认=${fmtM(ev.broadConfirm)}`);
+  }
+  return lines.join('\n');
+}
+
+function refreshAiContextPreview() {
+  const el = $('#ai-ctx-preview');
+  if (el) el.textContent = buildAiDataBrief() || '正在等待观测快照加载…';
+}
+
+function saveAiHistory() {
+  try {
+    localStorage.setItem(AI_HIST_KEY, JSON.stringify(aiState.messages.slice(-16)));
+  } catch { /* ignore quota */ }
+}
+
+function renderAiMessages() {
+  const box = $('#ai-messages');
+  if (!box) return;
+  if (!aiState.messages.length) {
+    box.innerHTML = `
+      <div class="ai-msg assistant">
+        <div class="ai-msg-meta"><span>✦ 从简 Clarvy 宏观研究助手</span><span>实时挂载 V2.4</span></div>
+        <div class="ai-msg-body">
+          <p>您好！我已经挂载当前看板的 <b>9 路官方实测、美联储周报+美债拍卖高频估算</b> 及您的 <b>工作台情景参数</b>。</p>
+          <p>您可以直接点击上方<b>快捷追问词</b>，或在下方输入任何问题。严格区分「官方实测 / 高频估算 / 条件推演」，所有结论仅供宏观机制交流，不构成投资建议。</p>
+        </div>
+      </div>`;
+    return;
+  }
+  box.innerHTML = aiState.messages.map((m, idx) => {
+    const roleLabel = m.role === 'user' ? '我的提问' : `✦ ${esc(m.modelLabel || '从简 AI 助手')}`;
+    const fallbackBtn = m.offerJump && m.sourceQuestion
+      ? `<button type="button" class="ai-fallback-jump" data-jump-q="${esc(m.sourceQuestion)}">↗ 一键改用免 Key 模式打包跳往 claudeai.chat 作答</button>`
+      : '';
+    return `
+      <div class="ai-msg ${m.role === 'user' ? 'user' : 'assistant'}" data-msg-idx="${idx}">
+        <div class="ai-msg-meta"><span>${roleLabel}</span><span>${esc(m.time || '')}</span></div>
+        <div class="ai-msg-body">${m.role === 'user' ? `<p>${esc(m.content).replace(/\n/g, '<br>')}</p>` : renderMdSafe(m.content)}${fallbackBtn}</div>
+      </div>`;
+  }).join('');
+  box.querySelectorAll('[data-jump-q]').forEach(btn => {
+    btn.addEventListener('click', () => jumpToClarvyWithQuestion(btn.dataset.jumpQ));
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function updateAiModeUI() {
+  const hasKey = Boolean(aiState.cfg.apiKey?.trim());
+  $('#ai-tab-direct')?.classList.toggle('active', aiState.mode === 'direct');
+  $('#ai-tab-jump')?.classList.toggle('active', aiState.mode === 'jump');
+  const statusEl = $('#ai-cfg-status');
+  if (statusEl) {
+    statusEl.textContent = hasKey ? `✓ 已配置 · ${aiState.cfg.model || '兼容模型'}` : '未保存密钥';
+    statusEl.classList.toggle('ready', hasKey);
+  }
+  const sendBtn = $('#ai-send-btn');
+  if (sendBtn) {
+    sendBtn.textContent = aiState.mode === 'direct'
+      ? (hasKey ? '⚡ 发送（站内流式作答）' : '⚡ 发送提问')
+      : '↗ 复制实时数据并跳往从简 Clarvy';
+  }
+}
+
+async function copyTextSafe(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+async function jumpToClarvyWithQuestion(questionText) {
+  const includeCtx = $('#ai-include-ctx')?.checked !== false;
+  const ctx = includeCtx ? buildAiDataBrief() : '';
+  const fullPrompt = ctx
+    ? `${ctx}\n\n━━━━━━━━━━━━\n【请基于以上最新官方实测、高频桥接与模型状态回答（严格区分实测/估算/推演，附非投资建议说明）】：\n${questionText}`
+    : questionText;
+
+  const copied = await copyTextSafe(fullPrompt);
+  const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  aiState.messages.push(
+    { role: 'user', content: questionText, time: nowStr },
+    {
+      role: 'assistant',
+      modelLabel: '从简 Clarvy 联动回执',
+      time: nowStr,
+      content: `${copied ? '**✓ 已将「您的问题 ＋ 当期 9 源实时数据底稿」复制到剪贴板**' : '**已为您打包好提问与实时数据底稿**'}，并正在打开 **从简 Clarvy（claudeai.chat）**。\n\n进入对话页后直接 **粘贴（Ctrl+V / 长按粘贴）并发送**，即可调用本平台 24 款大模型（新注册账号每月赠 300 免费积分）获取完整深度解答。`
+    }
+  );
+  saveAiHistory();
+  renderAiMessages();
+  toast(copied ? '已复制完整提问与实时数据，正在打开 claudeai.chat…' : '正在打开 claudeai.chat…');
+  window.open('https://claudeai.chat', '_blank', 'noopener,noreferrer');
+}
+
+async function sendDirectChat(questionText) {
+  const cfg = aiState.cfg;
+  if (!cfg.apiKey?.trim()) {
+    const cfgBox = $('#ai-config-box');
+    if (cfgBox) cfgBox.hidden = false;
+    $('#ai-api-key')?.focus();
+    const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    aiState.messages.push(
+      { role: 'user', content: questionText, time: nowStr },
+      {
+        role: 'assistant',
+        modelLabel: '配置提示',
+        time: nowStr,
+        sourceQuestion: questionText,
+        offerJump: true,
+        content: '检测到您尚未保存站内直连 **API Key**。\n\n- **若您已有兼容 API Key**：请在上方展开的「接口设置」中粘贴保存一次，后续每次即可直接在看板内流式多轮问答；\n- **若您使用的是从简 Clarvy 普通免费积分账号（暂无 API Key）**：直接点下方按钮，一键带完整实时数据跳往本平台免费作答。'
+      }
+    );
+    saveAiHistory();
+    renderAiMessages();
+    return;
+  }
+
+  const baseUrl = (cfg.baseUrl || 'https://api.deepseek.com/v1').trim().replace(/\/+$/, '');
+  const endpoint = baseUrl.endsWith('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`;
+  const model = (cfg.model || 'deepseek-chat').trim();
+  const includeCtx = $('#ai-include-ctx')?.checked !== false;
+
+  const sysPrompt = [
+    '你是「中美资本三流看板 V2.4」（由从简 Clarvy · claudeai.chat 同源构建）的内置宏观与跨境资本研究助手。',
+    '回答纪律：',
+    '1. 严格区分三层口径：「官方已交割实测（如美国财政部 TIC 表1/表5、日频收益率、SOFR、ECB 汇率、VIX）」、「高频桥接估算（美联储 H.4.1 周度外国官方托管 + 国债拍卖间接投标桥接的近月 80% 预测区间）」与「七资产守恒动力学条件情景推演」，绝不混同。',
+    '2. 美联储 H.4.1 与美债拍卖不披露分国别明细，严禁编造中国内地或香港尚未披露月份的单月净买卖点估计。',
+    '3. 用简洁、结构化中文作答，关键数字标明时间与单位；结尾简短注明“仅供宏观机制研究交流，不构成投资建议”。',
+    includeCtx ? `\n以下是用户当前看板实时加载的数据快照与工作台状态：\n${buildAiDataBrief()}` : ''
+  ].filter(Boolean).join('\n');
+
+  const historyTurns = aiState.messages
+    .filter(m => (m.role === 'user' || m.role === 'assistant') && !m.offerJump && m.modelLabel !== '从简 Clarvy 联动回执' && m.modelLabel !== '配置提示')
+    .slice(-8)
+    .map(m => ({ role: m.role, content: m.content }));
+
+  const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  aiState.messages.push({ role: 'user', content: questionText, time: nowStr });
+  const assistantMsg = { role: 'assistant', modelLabel: model, time: nowStr, content: '正在思考并读取看板实时指标…' };
+  aiState.messages.push(assistantMsg);
+  renderAiMessages();
+
+  aiState.busy = true;
+  aiState.aborter = new AbortController();
+  $('#ai-send-btn').disabled = true;
+  $('#ai-stop-btn').hidden = false;
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey.trim()}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'system', content: sysPrompt }, ...historyTurns, { role: 'user', content: questionText }],
+        temperature: 0.35,
+        stream: true
+      }),
+      signal: aiState.aborter.signal
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text().catch(() => '');
+      throw new Error(`HTTP ${resp.status}${errBody ? ': ' + errBody.slice(0, 180) : ''}`);
+    }
+
+    const ctype = resp.headers.get('content-type') || '';
+    if (ctype.includes('text/event-stream') && resp.body) {
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buf = '';
+      let acc = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const j = JSON.parse(payload);
+            const delta = j.choices?.[0]?.delta?.content ?? j.choices?.[0]?.delta?.reasoning_content ?? '';
+            if (delta) {
+              acc += delta;
+              assistantMsg.content = acc;
+              renderAiMessages();
+            }
+          } catch { /* partial chunk */ }
+        }
+      }
+      if (!acc.trim()) assistantMsg.content = '模型已返回，但内容为空；请检查模型名称是否匹配该接口。';
+    } else {
+      const j = await resp.json();
+      const txt = j.choices?.[0]?.message?.content || j.reply || '';
+      assistantMsg.content = txt || '模型未返回有效文本。';
+    }
+    saveAiHistory();
+    renderAiMessages();
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      assistantMsg.content = (assistantMsg.content.startsWith('正在思考') ? '' : assistantMsg.content + '\n\n') + '*(已手动停止生成)*';
+    } else {
+      const msg = String(err?.message || err || '请求失败');
+      const corsHint = /Failed to fetch|NetworkError|Load failed/i.test(msg)
+        ? '（该接口地址未开放浏览器跨域 CORS 或网络不可达；注意 claudeai.chat 主站网页暂不支持无代理跨域直连，建议改用支持 CORS 的兼容网关或点下方免 Key 按钮跳往本平台作答）'
+        : '';
+      assistantMsg.content = `**站内直连请求未成功**：\`${msg}\` ${corsHint}`;
+      assistantMsg.offerJump = true;
+      assistantMsg.sourceQuestion = questionText;
+    }
+    saveAiHistory();
+    renderAiMessages();
+  } finally {
+    aiState.busy = false;
+    aiState.aborter = null;
+    $('#ai-send-btn').disabled = false;
+    $('#ai-stop-btn').hidden = true;
+  }
+}
+
+function initAiAssistant() {
+  const drawer = $('#ai-drawer');
+  const backdrop = $('#ai-backdrop');
+  const onboardCard = $('#ai-onboard-card');
+  if (!drawer) return;
+
+  try {
+    const savedCfg = JSON.parse(localStorage.getItem(AI_CFG_KEY) || 'null');
+    if (savedCfg && typeof savedCfg === 'object') {
+      aiState.cfg = { ...aiState.cfg, ...savedCfg };
+    }
+    const savedHist = JSON.parse(localStorage.getItem(AI_HIST_KEY) || 'null');
+    if (Array.isArray(savedHist)) aiState.messages = savedHist.slice(-16);
+  } catch { /* ignore */ }
+
+  // Populate config inputs
+  if ($('#ai-provider')) $('#ai-provider').value = aiState.cfg.provider || 'deepseek';
+  if ($('#ai-base-url')) $('#ai-base-url').value = aiState.cfg.baseUrl || AI_PROVIDERS.deepseek.baseUrl;
+  if ($('#ai-model')) $('#ai-model').value = aiState.cfg.model || AI_PROVIDERS.deepseek.model;
+  if ($('#ai-api-key')) $('#ai-api-key').value = aiState.cfg.apiKey || '';
+
+  // Default mode: if API Key already saved -> direct; else still show direct/jump clearly
+  aiState.mode = aiState.cfg.apiKey?.trim() ? 'direct' : 'jump';
+  updateAiModeUI();
+  renderAiMessages();
+  refreshAiContextPreview();
+
+  const isOnboarded = () => {
+    try { return localStorage.getItem(AI_ONBOARD_KEY) === '1'; } catch { return false; }
+  };
+  const markOnboarded = () => {
+    try { localStorage.setItem(AI_ONBOARD_KEY, '1'); } catch { /* ignore */ }
+    if (onboardCard) onboardCard.hidden = true;
+  };
+
+  function openDrawer() {
+    aiState.open = true;
+    drawer.hidden = false;
+    backdrop.hidden = false;
+    $('#ai-fab')?.setAttribute('aria-expanded', 'true');
+    refreshAiContextPreview();
+    if (onboardCard) onboardCard.hidden = isOnboarded();
+    setTimeout(() => {
+      if (!isOnboarded()) $('#ai-register-go')?.focus();
+      else $('#ai-input')?.focus();
+    }, 50);
+  }
+
+  function closeDrawer() {
+    aiState.open = false;
+    drawer.hidden = true;
+    backdrop.hidden = true;
+    $('#ai-fab')?.setAttribute('aria-expanded', 'false');
+  }
+
+  $('#open-ai-btn')?.addEventListener('click', openDrawer);
+  $('#ai-fab')?.addEventListener('click', () => (aiState.open ? closeDrawer() : openDrawer()));
+  $('#ai-close-btn')?.addEventListener('click', closeDrawer);
+  backdrop?.addEventListener('click', closeDrawer);
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && aiState.open) closeDrawer();
+  });
+
+  // First-time registration actions
+  $('#ai-register-go')?.addEventListener('click', () => {
+    markOnboarded();
+    toast('已为您打开「从简 Clarvy」注册页；注册完成后返回本页即可直接提问！');
+  });
+  $('#ai-already-registered')?.addEventListener('click', () => {
+    markOnboarded();
+    $('#ai-input')?.focus();
+  });
+  $('#ai-show-onboard')?.addEventListener('click', () => {
+    if (onboardCard) onboardCard.hidden = !onboardCard.hidden;
+  });
+
+  // Mode tabs & config panel
+  $('#ai-tab-direct')?.addEventListener('click', () => {
+    aiState.mode = 'direct';
+    updateAiModeUI();
+    if (!aiState.cfg.apiKey?.trim() && $('#ai-config-box')) $('#ai-config-box').hidden = false;
+  });
+  $('#ai-tab-jump')?.addEventListener('click', () => {
+    aiState.mode = 'jump';
+    updateAiModeUI();
+  });
+  $('#ai-cfg-toggle')?.addEventListener('click', () => {
+    const box = $('#ai-config-box');
+    if (box) box.hidden = !box.hidden;
+  });
+
+  $('#ai-provider')?.addEventListener('change', e => {
+    const p = e.target.value;
+    const preset = AI_PROVIDERS[p];
+    if (preset && p !== 'custom') {
+      $('#ai-base-url').value = preset.baseUrl;
+      $('#ai-model').value = preset.model;
+    }
+  });
+
+  $('#ai-toggle-key-vis')?.addEventListener('click', e => {
+    const inp = $('#ai-api-key');
+    if (!inp) return;
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    e.target.textContent = show ? '隐藏' : '显示';
+  });
+
+  $('#ai-save-cfg')?.addEventListener('click', () => {
+    aiState.cfg = {
+      provider: $('#ai-provider')?.value || 'custom',
+      baseUrl: ($('#ai-base-url')?.value || '').trim() || AI_PROVIDERS.deepseek.baseUrl,
+      model: ($('#ai-model')?.value || '').trim() || 'deepseek-chat',
+      apiKey: ($('#ai-api-key')?.value || '').trim()
+    };
+    try { localStorage.setItem(AI_CFG_KEY, JSON.stringify(aiState.cfg)); } catch { /* ignore */ }
+    if (aiState.cfg.apiKey) {
+      aiState.mode = 'direct';
+      if ($('#ai-config-box')) $('#ai-config-box').hidden = true;
+      toast('已保存 API 配置到本地浏览器，现在可直接站内流式问答！');
+    } else {
+      toast('未填写 API Key，已切回免 Key 跳转模式。');
+      aiState.mode = 'jump';
+    }
+    updateAiModeUI();
+  });
+
+  $('#ai-clear-cfg')?.addEventListener('click', () => {
+    aiState.cfg.apiKey = '';
+    if ($('#ai-api-key')) $('#ai-api-key').value = '';
+    try { localStorage.removeItem(AI_CFG_KEY); } catch { /* ignore */ }
+    aiState.mode = 'jump';
+    updateAiModeUI();
+    toast('已从本地浏览器清除保存的 API Key。');
+  });
+
+  // Preset questions
+  $$('#ai-presets button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.dataset.q || '';
+      if (!q || aiState.busy) return;
+      if ($('#ai-input')) $('#ai-input').value = q;
+      submitAiQuestion();
+    });
+  });
+
+  function submitAiQuestion() {
+    if (aiState.busy) return;
+    const inp = $('#ai-input');
+    const q = (inp?.value || '').trim();
+    if (!q) return toast('请先输入您想追问的问题或点击上方快捷追问词。');
+    inp.value = '';
+    if (aiState.mode === 'jump') jumpToClarvyWithQuestion(q);
+    else sendDirectChat(q);
+  }
+
+  $('#ai-send-btn')?.addEventListener('click', submitAiQuestion);
+  $('#ai-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      submitAiQuestion();
+    }
+  });
+  $('#ai-stop-btn')?.addEventListener('click', () => {
+    if (aiState.aborter) aiState.aborter.abort();
+  });
+  $('#ai-clear-chat')?.addEventListener('click', () => {
+    if (aiState.busy && aiState.aborter) aiState.aborter.abort();
+    aiState.messages = [];
+    try { localStorage.removeItem(AI_HIST_KEY); } catch { /* ignore */ }
+    renderAiMessages();
+  });
+}
+
 let resize;
 window.addEventListener('resize', () => {
   clearTimeout(resize);
@@ -1363,6 +2036,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) stop(
 
 recompute();
 readURL();
+initAiAssistant();
 sync();
 loadArchive();
 renderIdentification();

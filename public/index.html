@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f4f7fb">
-  <meta name="description" content="中美资本三流动态看板 V2.3：接入 9 组官方公开源，新增美联储 H.4.1 周度托管与美债拍卖高频桥接估算（同图实线实测 + 虚线 80% 预测区间）、五项逆转条件清单与七资产双向耦合工作台。">
-  <title>中美资本三流动态看板 · V2.3 高频桥接估算版</title>
+  <meta name="description" content="中美资本三流动态看板 V2.5：9 组官方公开源、美联储 H.4.1 + 美债拍卖高频桥接估算（含 LOOCV 样本外覆盖率回验）、六项逆转条件清单、流动性分层强售七资产模型与从简 Clarvy AI 宏观问答。">
+  <title>中美资本三流动态看板 · V2.5 实测校准与样本外回验版</title>
   <link rel="icon" href="assets/favicon.svg">
   <link rel="stylesheet" href="workbench.css">
   <script type="module" src="workbench.mjs"></script>
@@ -14,18 +14,18 @@
   <a class="skip" href="#main">跳到主要内容</a>
 
   <div class="top-notice">
-    <div class="notice-inner">
-      <span><b>自动回源看板 V2.3</b> · 接入 9 组官方与交易所公开源（日频利差 / SOFR / 汇率 / VIX ＋ 周频联储托管 / 美债拍卖高频桥接 ＋ 月频 TIC 实测）</span>
-      <span class="notice-sub">口径纪律：实线为月度 TIC 已交割实测，虚线与阴影带为美联储 H.4.1 + 国债拍卖桥接的近月估算（80% 区间），情景模型为条件推演——三者严禁混同。</span>
+      <div class="notice-inner">
+        <span><b>自动回源看板 V2.5</b> · 9 组官方公开源定时自动刷新 ＋ LOOCV 样本外回验 ＋ 实测校准工作台 ＋ AI 宏观问答</span>
+        <span class="notice-sub">口径纪律：实线为月度 TIC 已交割实测，虚线与阴影带为美联储 H.4.1 + 国债拍卖桥接的近月估算（80% 区间），情景模型为条件推演——三者严禁混同。</span>
+      </div>
     </div>
-  </div>
 
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-group">
         <a class="brand" href="#overview">
           <span class="brand-mark"><i></i><i></i><i></i></span>
-          <span>中美资本三流看板<small>CAPITAL THREE-FLOWS DASHBOARD · V2.3</small></span>
+          <span>中美资本三流看板<small>CAPITAL THREE-FLOWS DASHBOARD · V2.5</small></span>
         </a>
         <span class="regime-pill" id="regime-pill"><i class="dot" id="data-dot"></i><b id="regime-text">正在读取实测与高频估算快照…</b></span>
       </div>
@@ -39,6 +39,7 @@
       </nav>
 
       <div class="header-actions">
+        <button class="ai-trigger-btn" id="open-ai-btn" title="打开从简 Clarvy AI 宏观问答抽屉（首次引导注册，支持站内直连或免Key跳转）">✦ AI 问答</button>
         <button class="quiet-btn" id="refresh" title="重新读取最新发布的公开数据快照">↻ 同步数据</button>
         <button class="quiet-btn" id="theme-toggle" title="切换浅色简报风与深色终端风">☾ 深色</button>
         <button class="primary-btn" id="share">分享当前视图 ↗</button>
@@ -47,7 +48,7 @@
     <div class="status-ribbon">
       <div class="ribbon-inner">
         <span id="sync-status">正在读取 9 组公开数据源快照…</span>
-        <span class="edition">高频桥接估算与耦合模型 <b>V2.3</b> · 从简 Clarvy</span>
+        <span class="edition">实测校准与耦合模型 <b>V2.5</b> · 从简 Clarvy</span>
       </div>
     </div>
   </header>
@@ -121,6 +122,7 @@
               <tbody id="nowcast-table-body"></tbody>
             </table>
           </div>
+          <div class="backtest-strip" id="nowcast-backtest"></div>
           <p class="micro" id="nowcast-footnote" style="margin-top:10px"></p>
         </article>
       </div>
@@ -129,8 +131,8 @@
         <div class="sec-title">
           <span class="sec-num">3</span>
           <div>
-            <h2>资本流向逆转 · 五项现实条件达标清单</h2>
-            <p>不设硬编码倒计时天数——直接追踪触发资本大级别转向的 5 个关键条件目前满足了几项、卡在哪一项</p>
+            <h2>资本流向逆转 · 六项现实条件达标清单</h2>
+            <p>不设硬编码倒计时天数——直接追踪触发资本大级别转向的 6 个关键条件（含 VIX 美元流动性恐慌标尺）目前满足了几项、卡在哪一项</p>
           </div>
         </div>
         <article class="panel checklist-panel">
@@ -221,12 +223,16 @@
 
       <div class="scenario-bar">
         <div class="scenarios" id="presets"></div>
-        <button class="quiet" id="reset">恢复本情景默认</button>
+        <div class="scenario-tools">
+          <button class="calibrate-btn" id="calibrate-live" title="将今日实测的中美10Y利差、SOFR、VIX与汇率折算一键映射为工作台初始条件（不拟合远端回报假设）">⚡ 用今日实测校准起点</button>
+          <button class="quiet" id="reset">恢复本情景默认</button>
+        </div>
       </div>
       <div class="scenario-caption">
         <span id="scenario-brief"></span>
-        <span>基准资金池 = 100 指数点（折算参考见右侧） · 二阶守恒积分</span>
+        <span>基准资金池 = 100 指数点（折算参考见右侧） · 流动性分层强售 ＋ 二阶守恒积分</span>
       </div>
+      <div class="calibration-note" id="calibration-note" hidden></div>
 
       <div class="metrics" id="metrics"></div>
 
@@ -578,10 +584,135 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <span>中美资本三流动态看板 · 原创实现 V2.3 · 9 源自动回源 + 高频桥接估算 + 七资产耦合模型</span>
-      <span>从简 Clarvy · 仅供宏观机制与数据研究，不构成任何投资建议</span>
+      <span>中美资本三流动态看板 · 原创实现 V2.5 · 9 源定时自动刷新 + LOOCV 样本外回验 + 实测校准七资产模型 + AI 问答</span>
+      <span><a href="https://claudeai.chat" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">从简 Clarvy (claudeai.chat)</a> · 仅供宏观机制与数据研究，不构成任何投资建议</span>
     </div>
   </footer>
+
+  <!-- ==================== 从简 Clarvy · 双模站内 AI 宏观问答抽屉 ==================== -->
+  <button class="ai-fab" id="ai-fab" type="button" aria-controls="ai-drawer" aria-expanded="false">
+    <span class="ai-fab-spark">✦</span>
+    <span>问从简 AI</span>
+  </button>
+
+  <div class="ai-backdrop" id="ai-backdrop" hidden></div>
+
+  <aside class="ai-drawer" id="ai-drawer" role="dialog" aria-modal="true" aria-labelledby="ai-drawer-title" hidden>
+    <div class="ai-drawer-head">
+      <div>
+        <div class="ai-head-title">
+          <span class="ai-badge-dot">✦</span>
+          <h2 id="ai-drawer-title">从简 Clarvy · 资本三流 AI 问答</h2>
+        </div>
+        <p class="ai-head-sub">自动挂载当期 9 路官方实测、高频估算与模型状态 · <a href="https://claudeai.chat" target="_blank" rel="noopener noreferrer">打开从简主站 ↗</a> · <button type="button" class="link-btn" id="ai-show-onboard">注册引导</button></p>
+      </div>
+      <button type="button" class="quiet-btn ai-close-btn" id="ai-close-btn" aria-label="关闭问答抽屉">✕</button>
+    </div>
+
+    <div class="ai-drawer-body" id="ai-drawer-body">
+      <!-- 首次使用：引导前往从简 Clarvy 注册账号 -->
+      <section class="ai-onboard-card" id="ai-onboard-card">
+        <div class="ai-onboard-top">
+          <span class="tag tag-live">首次使用引导 · 免费领每月 300 积分</span>
+          <span class="ai-onboard-domain">claudeai.chat</span>
+        </div>
+        <h3>第一步：前往「从简 Clarvy」免费注册账号</h3>
+        <p>本看板由 <b>从简 · Clarvy（claudeai.chat）</b>全能 Agent 工作台驱动。新用户邮箱注册即可免费开启（免绑卡，立赠<b>每月 300 免费积分</b>，支持 24 款主流大模型）。注册后您可任选下方两种方式在看板内提问：</p>
+        <ul class="ai-onboard-list">
+          <li><b>方式 A · 站内直连流式问答</b>：在下方「接口配置」填入一次您的兼容 API Key（仅保存在您本地浏览器），后续每次直接在当前抽屉内多轮流式对话；</li>
+          <li><b>方式 B · 免 Key 一键联动本平台</b>：无需任何密钥，输入问题点发送，自动打包当期 9 路最新数据并打开 <code>claudeai.chat</code>，粘贴即用本平台免费积分深度作答。</li>
+        </ul>
+        <div class="ai-onboard-actions">
+          <a class="primary-btn ai-reg-btn" id="ai-register-go" href="https://claudeai.chat" target="_blank" rel="noopener noreferrer">🚀 前往从简 Clarvy 免费注册账号 ↗</a>
+          <button type="button" class="quiet-btn" id="ai-already-registered">我已有账号，直接开始问答 →</button>
+        </div>
+      </section>
+
+      <!-- 双模式切换栏 -->
+      <div class="ai-mode-bar">
+        <div class="segmented ai-mode-seg" role="tablist" aria-label="问答调用模式">
+          <button type="button" data-ai-mode="direct" id="ai-tab-direct" class="active">⚡ 站内直连问答 (API Key)</button>
+          <button type="button" data-ai-mode="jump" id="ai-tab-jump">↗ 免 Key 跳本平台作答</button>
+        </div>
+        <button type="button" class="quiet-btn ai-cfg-toggle" id="ai-cfg-toggle" title="配置本地 API Key 与模型">⚙ 接口设置</button>
+      </div>
+
+      <!-- API Key 本地配置面板（仅存于访客 localStorage） -->
+      <section class="ai-config-box" id="ai-config-box" hidden>
+        <div class="ai-cfg-head">
+          <b>站内直连模型配置（OpenAI 兼容接口）</b>
+          <span id="ai-cfg-status" class="ai-cfg-badge">未保存密钥</span>
+        </div>
+        <p class="micro">安全承诺：API Key 仅存储在您本人浏览器的 <code>localStorage</code>，绝不上传看板服务器。若您使用普通免费账号暂无个人 API Key，请直接切至右侧「免 Key 跳本平台作答」。</p>
+        <div class="ai-cfg-grid">
+          <label>
+            <span>接口预设通道</span>
+            <select id="ai-provider">
+              <option value="custom">从简外接网关 / 自定义 OpenAI 兼容接口</option>
+              <option value="deepseek">DeepSeek 官方直连 (api.deepseek.com)</option>
+              <option value="siliconflow">硅基流动 SiliconFlow (api.siliconflow.cn)</option>
+              <option value="openrouter">OpenRouter 多模型直连 (openrouter.ai)</option>
+            </select>
+          </label>
+          <label>
+            <span>接口地址 (Base URL，须支持浏览器跨域 CORS)</span>
+            <input type="url" id="ai-base-url" placeholder="https://api.deepseek.com/v1" autocomplete="off">
+          </label>
+          <label>
+            <span>模型名称 (Model ID)</span>
+            <input type="text" id="ai-model" placeholder="deepseek-chat" autocomplete="off">
+          </label>
+          <label>
+            <span>API Key（首次填入保存，后续免填）</span>
+            <div class="ai-key-row">
+              <input type="password" id="ai-api-key" placeholder="sk-..." autocomplete="off">
+              <button type="button" class="quiet-btn" id="ai-toggle-key-vis">显示</button>
+            </div>
+          </label>
+        </div>
+        <div class="ai-cfg-actions">
+          <button type="button" class="primary-btn" id="ai-save-cfg">保存配置到本地浏览器</button>
+          <button type="button" class="quiet-btn" id="ai-clear-cfg">清除本地密钥</button>
+        </div>
+      </section>
+
+      <!-- 实时数据上下文自动挂载开关 -->
+      <div class="ai-ctx-bar">
+        <label class="ai-ctx-check">
+          <input type="checkbox" id="ai-include-ctx" checked>
+          <span>自动附带当期 9 源实测、10—11月高频估算与当前滑块参数</span>
+        </label>
+        <details class="ai-ctx-details">
+          <summary>查看实时数据底稿</summary>
+          <pre id="ai-ctx-preview">正在读取看板快照…</pre>
+        </details>
+      </div>
+
+      <!-- 快捷宏观追问词 -->
+      <div class="ai-presets" id="ai-presets">
+        <button type="button" data-q="请结合看板最新 9月 TIC 实测与 10—11月高频桥接估算，拆解当前全球外资与外国官方储备对美债、美股的真实动向。">📊 解读 9月实测与 10—11月降温</button>
+        <button type="button" data-q="当前 VIX 波动率跳升至高位，但中美 10Y 利差仍倒挂逾 330bp、SOFR 仍在 3.9% 附近，这对资本流量、流速、流向意味着什么？">⚡ VIX 高波动 + 利差倒挂含义</button>
+        <button type="button" data-q="为什么外国央行官方美债存量持续下降，但全球私人部门对美净买入仍未转负？触发私人套息盘实质逆转还差哪几个条件？">🏦 官方减持 vs 私人套息分化</button>
+        <button type="button" data-q="请根据我当前在「03 模型工作台」设定的情景参数与触发月份（T_S、T_flip、T_confirm），推演未来 12—36 个月的资金演化路径与主要风险边界。">🧭 推演当前工作台滑块情景</button>
+      </div>
+
+      <!-- 对话消息流 -->
+      <div class="ai-messages" id="ai-messages" aria-live="polite"></div>
+    </div>
+
+    <div class="ai-drawer-foot">
+      <div class="ai-composer">
+        <textarea id="ai-input" rows="2" placeholder="输入您想追问的资本三流、美债拍卖、利差或情景推演问题（Enter 发送，Shift+Enter 换行）…"></textarea>
+        <div class="ai-composer-bar">
+          <button type="button" class="quiet-btn" id="ai-clear-chat" title="清空当前对话记录">清空对话</button>
+          <div class="ai-send-group">
+            <button type="button" class="quiet-btn ai-stop-btn" id="ai-stop-btn" hidden>■ 停止生成</button>
+            <button type="button" class="primary-btn" id="ai-send-btn">发送提问</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <div id="toast" role="status" aria-live="polite"></div>
 </body>

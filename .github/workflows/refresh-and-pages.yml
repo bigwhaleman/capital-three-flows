@@ -34,6 +34,13 @@ jobs:
         id: collect
         continue-on-error: true
         run: python update_data.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
       - name: Persist the snapshot including failure status
         run: |
           git config user.name 'capital-flow-data-bot'
@@ -43,13 +50,6 @@ jobs:
             git commit -m 'Update official observation snapshot [skip ci]'
             git push
           fi
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
       - name: Report upstream failure after publishing explicit stale status
         if: steps.collect.outcome == 'failure'
         run: |

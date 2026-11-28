@@ -1,11 +1,14 @@
-/** Coupled Capital Three-Flows Model v2.1
+/** Coupled Capital Three-Flows Model v2.5
  * K: capital-index points (W0=100), t: months.
  * Annual % -> /1200 monthly; one-off bp -> /10000; annual covariance -> /12.
- * Structural conditional dynamics + exact LP partial-identification bounds; NOT fitted forecast.
+ * Structural conditional dynamics + liquidity pecking-order forced sales + live observation
+ * starting-point calibration + exact LP partial-identification bounds; NOT fitted forecast.
  */
 export const ASSETS = ['美国股票', '美国债券', '中国风险股票', '中国风险债券', '黄金', '第三地资产', '美元现金'];
 export const COLORS = ['#5590ff', '#98b6ee', '#33c5ac', '#91ded0', '#edbb63', '#ae99e0', '#ccd5df'];
 export const INITIAL = [30, 20, 15, 10, 5, 10, 10];
+// Liquidity pecking-order weights during forced USD cash-raising (deep liquid UST & gold liquidated first).
+export const LIQ_WEIGHT = [1.0, 1.35, 0.85, 0.90, 1.15, 0.95, 0];
 const W0_REF = INITIAL.map(x => x / 100);
 
 export const DEFAULT = {
@@ -138,12 +141,14 @@ export function flowRates(K, s, t, p, dt = 0) {
   const f = Array.from({ length: 7 }, () => Array(7).fill(0));
   const forced = f.map(r => r.slice());
 
-  // 1. Lexicographic priority: satisfy forced cash-raising first within accessible holdings.
+  // 1. Lexicographic priority: satisfy forced cash-raising first with liquidity pecking order
+  //    (US Treasuries & gold liquidated proportionally faster than lower-liquidity assets, strictly respecting access).
   const eligible = K.map((k, i) => i === 6 ? 0 : k * (cn(i) ? p.access : 1));
-  const E = sum(eligible);
-  if (E > 0 && gap > 0) {
+  const weighted = eligible.map((e, i) => e * LIQ_WEIGHT[i]);
+  const W_ELIG = sum(weighted);
+  if (W_ELIG > 0 && gap > 0) {
     for (let i = 0; i < 6; i++) {
-      const raw = 1.4 * gap * eligible[i] / E;
+      const raw = 1.4 * gap * weighted[i] / W_ELIG;
       forced[i][6] = dt > 0 ? Math.min(raw, eligible[i] / dt) : raw;
       f[i][6] = forced[i][6];
     }
@@ -208,7 +213,7 @@ export function simulate(p, initial = INITIAL) {
   validate(p);
   if (initial.length !== 7 || initial.some(x => !Number.isFinite(x) || x < 0) || sum(initial) <= 0) throw Error('初始配置非法');
   let K = initial.slice(), s = [0.72, 0.28, 0.08], t = 0, cumCost = 0;
-  const a0 = flowRates(K, s, 0, p, 0);
+  const a0 = flowRates(K, s, 0, p, p.step);
   const rows = [summarize(K, s, 0, p, a0.f, sum(K), a0.forced, 0, a0.costRate, 0)];
   const substeps = Math.round(1 / p.step);
 
@@ -393,4 +398,47 @@ export function identifyBounds({ nU, nC, tolU = 0, tolC = 0, capUC = 5000, capCU
     feasible: true, status, minJ, maxJ, width: maxJ - minJ,
     witnessMin: witnessAt(minJ), witnessMax: witnessAt(maxJ)
   };
+}
+
+/** Transparently map live official market observations into starting-point parameters
+ * for the 7-asset workbench (bond0, tight, cashShock, fx), while leaving terminal
+ * return hypotheses (gapEnd, bondEnd, tau) explicitly user-controlled.
+ */
+export function calibrateFromObservations(obs) {
+  const getM = (src, id) => obs?.sources?.[src]?.metrics?.find(m => m.id === id)?.value;
+  const us10 = getM('us_treasury_yield', 'us_10y');
+  const cn10 = getM('cn_gov_yield', 'cn_10y');
+  const sofr = getM('nyfed_sofr', 'sofr');
+  const vix = getM('cboe_vix', 'vix');
+  const cnyNow = getM('ecb_fx', 'usd_cny');
+  const fxHist = obs?.sources?.ecb_fx?.history || [];
+  const cnyOld = fxHist[0]?.usd_cny;
+
+  const overrides = {};
+  const notes = [];
+  if (Number.isFinite(us10) && Number.isFinite(cn10)) {
+    const spreadPct = cn10 - us10;
+    overrides.bond0 = Number(clip(spreadPct, -6, 4).toFixed(2));
+    notes.push(`bond0=${overrides.bond0}% (锚定中美10Y利差 ${Math.round(spreadPct * 100)}bp)`);
+  }
+  if (Number.isFinite(sofr)) {
+    // Map SOFR 2.0%..5.5% -> tight 0.2..1.9 (anchor cash = 3 + 1.4*I - 1.8*R)
+    const tightEst = clip((sofr - 2.6) / 1.4, 0.15, 2.0);
+    overrides.tight = Number(tightEst.toFixed(2));
+    notes.push(`tight=${overrides.tight} (锚定隔夜SOFR ${sofr.toFixed(2)}%)`);
+  }
+  if (Number.isFinite(vix)) {
+    // VIX <= 20 -> cashShock 0; VIX 20..50 -> cashShock 0..1.2
+    const cs = vix <= 20 ? 0 : clip((vix - 20) / 25, 0, 1.4);
+    overrides.cashShock = Number(cs.toFixed(2));
+    notes.push(`cashShock=${overrides.cashShock} (锚定Cboe VIX ${vix.toFixed(1)})`);
+  }
+  if (Number.isFinite(cnyNow) && Number.isFinite(cnyOld) && cnyOld > 0) {
+    // Annualized 60-trading-day (~1 quarter) CNY move dampened by 0.5x to avoid extrapolating noise
+    const qPct = ((cnyOld - cnyNow) / cnyOld) * 100;
+    const fxEst = clip(qPct * 2.0, -3.0, 3.0);
+    overrides.fx = Number((Math.round(fxEst * 4) / 4).toFixed(2));
+    notes.push(`fx=${overrides.fx >= 0 ? '+' : ''}${overrides.fx}%/年 (近90日汇率折算)`);
+  }
+  return { overrides, notes };
 }

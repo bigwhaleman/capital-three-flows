@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T21:15:04+00:00",
-  "site_version": "2.3.0",
+  "generated_at": "2026-11-27T01:31:43+00:00",
+  "site_version": "2.5.0",
   "observation_policy": "Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.",
   "sources": {
     "ecb_fx": {
@@ -9,13 +9,13 @@
       "name": "欧洲中央银行参考汇率（90日序列）",
       "frequency": "工作日日频",
       "id": "ecb_fx",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
-      "period": "2026-11-27",
+      "last_attempt_at": "2026-11-27T01:31:26+00:00",
+      "period": "2026-11-26",
       "metrics": [
         {
           "id": "usd_cny",
           "name": "美元 / 人民币参考汇率",
-          "value": 6.654376,
+          "value": 6.660228,
           "unit": "人民币元/美元",
           "kind": "日频参考价",
           "note": "由同日欧元参考价交叉计算（CNY/EUR ÷ USD/EUR）；不是成交价或未来升值预期。"
@@ -23,7 +23,7 @@
         {
           "id": "usd_hkd",
           "name": "美元 / 港币参考汇率",
-          "value": 7.828238,
+          "value": 7.837358,
           "unit": "港元/美元",
           "kind": "日频参考价",
           "note": "由同日欧元参考价交叉计算；只作汇率环境观测，不代表跨境资金净流。"
@@ -31,13 +31,19 @@
         {
           "id": "usd_index",
           "name": "美元对六大主要货币指数",
-          "value": 103.871,
+          "value": 103.737,
           "unit": "指数点",
           "kind": "日频合成参考",
           "note": "由欧央行同日欧/日/英/加/瑞/典六币参考价按经典几何权重合成，衡量美元广泛强弱。"
         }
       ],
       "history": [
+        {
+          "period": "2026-09-04",
+          "usd_cny": 6.710893,
+          "usd_hkd": 7.840303,
+          "usd_index": 99.067
+        },
         {
           "period": "2026-09-07",
           "usd_cny": 6.710979,
@@ -391,17 +397,11 @@
           "usd_cny": 6.660228,
           "usd_hkd": 7.837358,
           "usd_index": 103.737
-        },
-        {
-          "period": "2026-11-27",
-          "usd_cny": 6.654376,
-          "usd_hkd": 7.828238,
-          "usd_index": 103.871
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "bcca89ff638aebb161b8da6158e7095891436c1ac74e74070529d4810b29c0d6",
+      "last_success_at": "2026-11-27T01:31:26+00:00",
+      "sha256": "7378a13e6c1f9f862abbaec42b1b27e7bc0c02a5364687b31af3e999f407e29b",
       "error": null,
       "fixture": false
     },
@@ -410,13 +410,13 @@
       "name": "美国财政部每日国债收益率曲线",
       "frequency": "交易日日频",
       "id": "us_treasury_yield",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
-      "period": "2026-11-27",
+      "last_attempt_at": "2026-11-27T01:31:26+00:00",
+      "period": "2026-11-25",
       "metrics": [
         {
           "id": "us_10y",
           "name": "美国 10 年期国债收益率",
-          "value": 4.94,
+          "value": 4.85,
           "unit": "%",
           "kind": "日频到期收益率",
           "note": "美国财政部每日国债平价收益率曲线（CMT 10Y），衡量美元无风险久期定价锚。"
@@ -424,7 +424,7 @@
         {
           "id": "us_2y",
           "name": "美国 2 年期国债收益率",
-          "value": 4.69,
+          "value": 4.61,
           "unit": "%",
           "kind": "日频到期收益率",
           "note": "美国财政部 CMT 2Y，反映联储政策利率路径预期。"
@@ -432,13 +432,19 @@
         {
           "id": "us_3m",
           "name": "美国 3 个月国库券收益率",
-          "value": 4.35,
+          "value": 4.34,
           "unit": "%",
           "kind": "日频短端收益率",
           "note": "美国财政部 CMT 3M，反映美元短端无风险套息水平。"
         }
       ],
       "history": [
+        {
+          "period": "2026-08-31",
+          "y10": 4.75,
+          "y2": 4.34,
+          "m3": 3.91
+        },
         {
           "period": "2026-09-01",
           "y10": 4.79,
@@ -792,17 +798,11 @@
           "y10": 4.85,
           "y2": 4.61,
           "m3": 4.34
-        },
-        {
-          "period": "2026-11-27",
-          "y10": 4.94,
-          "y2": 4.69,
-          "m3": 4.35
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "a37e0a945f074a2246cd17eec5f70494c563d4696d08d6ad47c38150850c7020",
+      "last_success_at": "2026-11-27T01:31:26+00:00",
+      "sha256": "7d6dcae74563a23ba35e68aa4477e532f13b70b84fd498445243db0238691b15",
       "error": null,
       "fixture": false
     },
@@ -811,13 +811,13 @@
       "name": "中国外汇交易中心国债收益率（SDDS）",
       "frequency": "交易日日频",
       "id": "cn_gov_yield",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
-      "period": "2026-11-27",
+      "last_attempt_at": "2026-11-27T01:31:26+00:00",
+      "period": "2026-11-26",
       "metrics": [
         {
           "id": "cn_10y",
           "name": "中国 10 年期国债收益率",
-          "value": 1.6038,
+          "value": 1.6084,
           "unit": "%",
           "kind": "日频到期收益率",
           "note": "中国外汇交易中心（CFETS）SDDS 公布国债收益率，可与美债 10Y 构成双端名义利差对照。"
@@ -825,13 +825,18 @@
         {
           "id": "cn_1y",
           "name": "中国 1 年期国债收益率",
-          "value": 1.1833,
+          "value": 1.1898,
           "unit": "%",
           "kind": "日频短端收益率",
           "note": "中国外汇交易中心 SDDS 1 年期国债收益率。"
         }
       ],
       "history": [
+        {
+          "period": "2026-10-28",
+          "y10": 1.6237,
+          "y1": 1.1683
+        },
         {
           "period": "2026-10-29",
           "y10": 1.624,
@@ -936,16 +941,11 @@
           "period": "2026-11-26",
           "y10": 1.6084,
           "y1": 1.1898
-        },
-        {
-          "period": "2026-11-27",
-          "y10": 1.6038,
-          "y1": 1.1833
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "0f1827ef588b47b3e0801e7a947ab6848bac6b0dc55103bbfe16051db22aec6c",
+      "last_success_at": "2026-11-27T01:31:26+00:00",
+      "sha256": "c2dc01aa73201328d865845eabfdfa911e0b5ff3dc3f8e4b9cbacb00cdd73d4f",
       "error": null,
       "fixture": false
     },
@@ -954,13 +954,13 @@
       "name": "纽约联储隔夜担保融资利率（SOFR）",
       "frequency": "交易日日频",
       "id": "nyfed_sofr",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
-      "period": "2026-11-25",
+      "last_attempt_at": "2026-11-27T01:31:26+00:00",
+      "period": "2026-11-24",
       "metrics": [
         {
           "id": "sofr",
           "name": "美元隔夜担保融资利率（SOFR）",
-          "value": 3.95,
+          "value": 3.94,
           "unit": "%",
           "kind": "日频货币市场利率",
           "note": "纽约联储公布的美元隔夜回购基准利率，直接刻画“停留在美元现金池”的套息回报锚。"
@@ -968,13 +968,18 @@
         {
           "id": "sofr_volume",
           "name": "SOFR 隔夜回购成交量",
-          "value": 31450.0,
+          "value": 31580.0,
           "unit": "亿美元/日",
           "kind": "日频市场成交规模",
           "note": "美国隔夜国债回购成交额（非跨境净流），反映美元货币市场深度。"
         }
       ],
       "history": [
+        {
+          "period": "2026-08-28",
+          "sofr": 3.65,
+          "volume": 28080.0
+        },
         {
           "period": "2026-08-31",
           "sofr": 3.68,
@@ -1269,16 +1274,11 @@
           "period": "2026-11-24",
           "sofr": 3.94,
           "volume": 31580.0
-        },
-        {
-          "period": "2026-11-25",
-          "sofr": 3.95,
-          "volume": 31450.0
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "edb1099aca249545a3c544c0169811f69a9a9860298a46ab7b145e45025b0369",
+      "last_success_at": "2026-11-27T01:31:26+00:00",
+      "sha256": "2cb5725ba9908dc96a69eefd0083722ce6613d4800be6e0ce323bd9be1b667de",
       "error": null,
       "fixture": false
     },
@@ -1287,20 +1287,24 @@
       "name": "Cboe 标普500波动率指数（VIX）",
       "frequency": "交易日日频",
       "id": "cboe_vix",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
+      "last_attempt_at": "2026-11-27T01:31:26+00:00",
       "status": "ok",
       "error": null,
       "metrics": [
         {
           "id": "vix",
           "name": "标普500隐含波动率（VIX）",
-          "value": 26.8,
+          "value": 28.29,
           "unit": "点",
           "kind": "日频风险情绪指标",
           "note": "Cboe 官方收盘值；高于 25–30 往往对应美元流动性压力抬头与风险资产去杠杆。"
         }
       ],
       "history": [
+        {
+          "period": "2026-09-03",
+          "vix": 14.32
+        },
         {
           "period": "2026-09-04",
           "vix": 14.53
@@ -1536,23 +1540,261 @@
         {
           "period": "2026-11-25",
           "vix": 28.29
-        },
-        {
-          "period": "2026-11-26",
-          "vix": 26.8
         }
       ],
-      "period": "2026-11-26",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "195053f361a6b25aecd87059c39d011d7947ba88434d63a0703f8679d3080cf3",
-      "fixture": false
+      "period": "2026-11-25",
+      "last_success_at": "2026-11-27T01:31:26+00:00",
+      "sha256": "ed60df4d8699594795bf3d31614ea3d9f159fa4bd5365cc1318e091500de3b65",
+      "fixture": false,
+      "monthly": [
+        {
+          "period": "2022-12",
+          "vix_avg": 21.78,
+          "obs": 21
+        },
+        {
+          "period": "2023-01",
+          "vix_avg": 20.17,
+          "obs": 21
+        },
+        {
+          "period": "2023-02",
+          "vix_avg": 20.12,
+          "obs": 20
+        },
+        {
+          "period": "2023-03",
+          "vix_avg": 21.64,
+          "obs": 23
+        },
+        {
+          "period": "2023-04",
+          "vix_avg": 17.82,
+          "obs": 19
+        },
+        {
+          "period": "2023-05",
+          "vix_avg": 17.64,
+          "obs": 23
+        },
+        {
+          "period": "2023-06",
+          "vix_avg": 14.0,
+          "obs": 22
+        },
+        {
+          "period": "2023-07",
+          "vix_avg": 13.93,
+          "obs": 21
+        },
+        {
+          "period": "2023-08",
+          "vix_avg": 15.85,
+          "obs": 23
+        },
+        {
+          "period": "2023-09",
+          "vix_avg": 15.17,
+          "obs": 21
+        },
+        {
+          "period": "2023-10",
+          "vix_avg": 18.89,
+          "obs": 22
+        },
+        {
+          "period": "2023-11",
+          "vix_avg": 14.02,
+          "obs": 22
+        },
+        {
+          "period": "2023-12",
+          "vix_avg": 12.72,
+          "obs": 20
+        },
+        {
+          "period": "2024-01",
+          "vix_avg": 13.39,
+          "obs": 22
+        },
+        {
+          "period": "2024-02",
+          "vix_avg": 13.98,
+          "obs": 21
+        },
+        {
+          "period": "2024-03",
+          "vix_avg": 13.79,
+          "obs": 20
+        },
+        {
+          "period": "2024-04",
+          "vix_avg": 16.14,
+          "obs": 22
+        },
+        {
+          "period": "2024-05",
+          "vix_avg": 13.06,
+          "obs": 23
+        },
+        {
+          "period": "2024-06",
+          "vix_avg": 12.67,
+          "obs": 20
+        },
+        {
+          "period": "2024-07",
+          "vix_avg": 14.37,
+          "obs": 23
+        },
+        {
+          "period": "2024-08",
+          "vix_avg": 19.31,
+          "obs": 22
+        },
+        {
+          "period": "2024-09",
+          "vix_avg": 17.66,
+          "obs": 21
+        },
+        {
+          "period": "2024-10",
+          "vix_avg": 19.96,
+          "obs": 23
+        },
+        {
+          "period": "2024-11",
+          "vix_avg": 16.02,
+          "obs": 21
+        },
+        {
+          "period": "2024-12",
+          "vix_avg": 15.87,
+          "obs": 21
+        },
+        {
+          "period": "2025-01",
+          "vix_avg": 16.76,
+          "obs": 22
+        },
+        {
+          "period": "2025-02",
+          "vix_avg": 16.97,
+          "obs": 20
+        },
+        {
+          "period": "2025-03",
+          "vix_avg": 21.84,
+          "obs": 21
+        },
+        {
+          "period": "2025-04",
+          "vix_avg": 31.97,
+          "obs": 21
+        },
+        {
+          "period": "2025-05",
+          "vix_avg": 20.46,
+          "obs": 22
+        },
+        {
+          "period": "2025-06",
+          "vix_avg": 18.4,
+          "obs": 21
+        },
+        {
+          "period": "2025-07",
+          "vix_avg": 16.38,
+          "obs": 23
+        },
+        {
+          "period": "2025-08",
+          "vix_avg": 15.75,
+          "obs": 21
+        },
+        {
+          "period": "2025-09",
+          "vix_avg": 15.79,
+          "obs": 22
+        },
+        {
+          "period": "2025-10",
+          "vix_avg": 18.09,
+          "obs": 23
+        },
+        {
+          "period": "2025-11",
+          "vix_avg": 19.77,
+          "obs": 20
+        },
+        {
+          "period": "2025-12",
+          "vix_avg": 15.55,
+          "obs": 22
+        },
+        {
+          "period": "2026-01",
+          "vix_avg": 16.18,
+          "obs": 21
+        },
+        {
+          "period": "2026-02",
+          "vix_avg": 19.21,
+          "obs": 20
+        },
+        {
+          "period": "2026-03",
+          "vix_avg": 25.6,
+          "obs": 22
+        },
+        {
+          "period": "2026-04",
+          "vix_avg": 19.81,
+          "obs": 21
+        },
+        {
+          "period": "2026-05",
+          "vix_avg": 17.24,
+          "obs": 21
+        },
+        {
+          "period": "2026-06",
+          "vix_avg": 17.91,
+          "obs": 22
+        },
+        {
+          "period": "2026-07",
+          "vix_avg": 17.09,
+          "obs": 23
+        },
+        {
+          "period": "2026-08",
+          "vix_avg": 15.23,
+          "obs": 21
+        },
+        {
+          "period": "2026-09",
+          "vix_avg": 15.78,
+          "obs": 22
+        },
+        {
+          "period": "2026-10",
+          "vix_avg": 16.9,
+          "obs": 22
+        },
+        {
+          "period": "2026-11",
+          "vix_avg": 23.66,
+          "obs": 18
+        }
+      ]
     },
     "tic_holdings": {
       "url": "https://ticdata.treasury.gov/Publish/slt_table5.txt",
       "name": "美国财政部 TIC 表 5（美债存量）",
       "frequency": "月频，带发布滞后",
       "id": "tic_holdings",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
+      "last_attempt_at": "2026-11-27T01:31:27+00:00",
       "period": "2026-09",
       "metrics": [
         {
@@ -1695,7 +1937,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
+      "last_success_at": "2026-11-27T01:31:27+00:00",
       "sha256": "18d2dece0370bf48929341ca3805a5482533520ae42485942a73081fd6cf8392",
       "error": null,
       "fixture": false
@@ -1705,7 +1947,7 @@
       "name": "美国财政部 TIC 表 1（跨境净买卖）",
       "frequency": "月频，带发布滞后",
       "id": "tic_transactions",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
+      "last_attempt_at": "2026-11-27T01:31:27+00:00",
       "period": "2026-09",
       "metrics": [
         {
@@ -2196,7 +2438,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
+      "last_success_at": "2026-11-27T01:31:27+00:00",
       "sha256": "a47fd809d67a2bb51ef86135916b0f52af84d2830a9c439c8a35ffdee332f7c8",
       "error": null,
       "fixture": false,
@@ -3630,7 +3872,7 @@
       "name": "美联储 H.4.1 周报（外国官方托管证券）",
       "frequency": "周频（滞后约 3 天）",
       "id": "fed_h41_custody",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
+      "last_attempt_at": "2026-11-27T01:31:27+00:00",
       "period": "2026-11-18",
       "metrics": [
         {
@@ -4191,7 +4433,7 @@
         }
       ],
       "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
+      "last_success_at": "2026-11-27T01:31:27+00:00",
       "sha256": "f3ab1ef7dc84128922b4caa7c231da3b2f6f6d14e5106faff39961d2784bdf4f",
       "error": null,
       "fixture": false
@@ -4201,7 +4443,7 @@
       "name": "美国财政部中长期国债拍卖（海外间接投标）",
       "frequency": "按场次实时更新（月均 8–9 场附息债）",
       "id": "ust_auctions",
-      "last_attempt_at": "2026-11-27T21:15:03+00:00",
+      "last_attempt_at": "2026-11-27T01:31:27+00:00",
       "period": "2026-11-25",
       "metrics": [
         {
@@ -4786,10 +5028,10 @@
           "primary_dealer_share": 8.61
         }
       ],
-      "status": "ok",
-      "last_success_at": "2026-11-27T21:15:03+00:00",
-      "sha256": "982f415b5b39cb917df5ea7214ec42c52bfc30a9d18a2e0ddf35f60036a468e3",
-      "error": null,
+      "status": "stale",
+      "last_success_at": "2026-11-26T15:29:20+00:00",
+      "sha256": "a85db1aa71c22173a5fd0fbd7dedd70eb3449360c6ce11d16c05ddd16c2002cb",
+      "error": "HTTP Error 504: Gateway Time-out",
       "fixture": false
     }
   },
@@ -4799,8 +5041,8 @@
     "latest_h41_date": "2026-11-18",
     "latest_auction_date": "2026-11-25",
     "next_tic_release_hint": "美国财政部通常于每月月中（约第 15–18 日）发布滞后两个月的 TIC 正式月报；新月报落地后，本估算窗口自动向后顺延。",
-    "country_boundary_note": "美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 9—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。",
-    "methodology": "双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间。",
+    "country_boundary_note": "美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 10—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。",
+    "methodology": "双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与留一法样本内校准的 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间与样本外覆盖率回验。",
     "validation": {
       "ci_level": 0.8,
       "official_holdings_loocv_rmse": 431.2,
@@ -4808,8 +5050,122 @@
       "official_overlap_months": 12,
       "bond_flow_loocv_rmse": 642.3,
       "total_flow_loocv_rmse": 936.2,
-      "flow_overlap_months": 36
+      "flow_overlap_months": 36,
+      "vix_equity_beta": 18.0,
+      "ci80_empirical_coverage_pct": 78.8,
+      "ci80_hits": 26,
+      "ci80_total": 33
     },
+    "backtest": [
+      {
+        "period": "2025-10",
+        "actual_total": 528.1,
+        "pred_total": 1326.7,
+        "low80": 126.9,
+        "high80": 2526.5,
+        "in_80_ci": true,
+        "err": -798.6
+      },
+      {
+        "period": "2025-11",
+        "actual_total": 2155.5,
+        "pred_total": 1251.6,
+        "low80": 51.8,
+        "high80": 2451.4,
+        "in_80_ci": true,
+        "err": 904.0
+      },
+      {
+        "period": "2025-12",
+        "actual_total": 1247.4,
+        "pred_total": 1391.0,
+        "low80": 191.2,
+        "high80": 2590.8,
+        "in_80_ci": true,
+        "err": -143.6
+      },
+      {
+        "period": "2026-01",
+        "actual_total": 612.0,
+        "pred_total": 1682.6,
+        "low80": 482.8,
+        "high80": 2882.4,
+        "in_80_ci": true,
+        "err": -1070.6
+      },
+      {
+        "period": "2026-02",
+        "actual_total": 1003.8,
+        "pred_total": 1317.7,
+        "low80": 117.9,
+        "high80": 2517.5,
+        "in_80_ci": true,
+        "err": -313.9
+      },
+      {
+        "period": "2026-03",
+        "actual_total": 948.9,
+        "pred_total": 965.7,
+        "low80": -234.1,
+        "high80": 2165.5,
+        "in_80_ci": true,
+        "err": -16.8
+      },
+      {
+        "period": "2026-04",
+        "actual_total": 2074.3,
+        "pred_total": 1471.4,
+        "low80": 271.6,
+        "high80": 2671.2,
+        "in_80_ci": true,
+        "err": 602.9
+      },
+      {
+        "period": "2026-05",
+        "actual_total": 2628.4,
+        "pred_total": 1211.2,
+        "low80": 11.4,
+        "high80": 2411.0,
+        "in_80_ci": false,
+        "err": 1417.3
+      },
+      {
+        "period": "2026-06",
+        "actual_total": 2109.6,
+        "pred_total": 1271.8,
+        "low80": 72.0,
+        "high80": 2471.6,
+        "in_80_ci": true,
+        "err": 837.8
+      },
+      {
+        "period": "2026-07",
+        "actual_total": 406.2,
+        "pred_total": 1646.7,
+        "low80": 446.9,
+        "high80": 2846.5,
+        "in_80_ci": false,
+        "err": -1240.6
+      },
+      {
+        "period": "2026-08",
+        "actual_total": 3070.4,
+        "pred_total": 1371.7,
+        "low80": 171.9,
+        "high80": 2571.5,
+        "in_80_ci": false,
+        "err": 1698.7
+      },
+      {
+        "period": "2026-09",
+        "actual_total": 1867.1,
+        "pred_total": 1412.3,
+        "low80": 212.5,
+        "high80": 2612.1,
+        "in_80_ci": true,
+        "err": 454.8
+      }
+    ],
     "months": [
       {
         "period": "2026-10",
@@ -4852,10 +5208,10 @@
         "bond": 570.6,
         "bond_low80": -252.6,
         "bond_high80": 1393.7,
-        "equity": 844.2,
-        "total": 1414.7,
-        "total_low80": 214.9,
-        "total_high80": 2614.5,
+        "equity": 824.1,
+        "total": 1394.7,
+        "total_low80": 194.9,
+        "total_high80": 2594.5,
         "official_holdings": 36395.2,
         "official_low80": 35535.6,
         "official_high80": 37254.8,

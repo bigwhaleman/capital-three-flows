@@ -349,18 +349,24 @@ def parse_vix(raw):
  if not rows:
   raise ValueError('Cboe VIX rows empty')
  hist = []
- for r in rows[-90:]:
+ by_ym = {}
+ for r in rows[-1200:]:
   if not r.get('DATE', '').strip() or not r.get('CLOSE', '').strip():
    continue
   p = us_date_to_iso(r['DATE'])
   c = number(r['CLOSE'])
   if not 1 <= c <= 200:
    raise ValueError('VIX range guard failed')
+  by_ym.setdefault(p[:7], []).append(c)
   hist.append({'period': p, 'vix': round(c, 2)})
  if not hist:
   raise ValueError('Cboe VIX recent rows empty')
  hist.sort(key=lambda x: x['period'])
  latest = hist[-1]
+ monthly = [
+  {'period': ym, 'vix_avg': round(sum(vals) / len(vals), 2), 'obs': len(vals)}
+  for ym, vals in sorted(by_ym.items())
+ ][-48:]
  return {
   'period': latest['period'],
   'metrics': [{
@@ -372,6 +378,7 @@ def parse_vix(raw):
    'note': 'Cboe 官方收盘值；高于 25–30 往往对应美元流动性压力抬头与风险资产去杠杆。',
   }],
   'history': hist[-60:],
+  'monthly': monthly,
  }
 
 
@@ -877,11 +884,16 @@ def compute_nowcast(sources):
  auc_by_ym = {r['period']: r for r in auc_monthly}
  hold_by_ym = {r['period']: r for r in hold_hist if r.get('official') is not None}
 
- vix_by_ym = {}
- for r in (vix_src.get('history') or []):
-  ym = r['period'][:7]
-  vix_by_ym.setdefault(ym, []).append(r['vix'])
- vix_month_avg = {ym: sum(vs) / len(vs) for ym, vs in vix_by_ym.items() if vs}
+ vix_month_avg = {}
+ for r in (vix_src.get('monthly') or []):
+  if r.get('period') and r.get('vix_avg') is not None:
+   vix_month_avg[r['period']] = float(r['vix_avg'])
+ if not vix_month_avg:
+  vix_by_ym = {}
+  for r in (vix_src.get('history') or []):
+   ym = r['period'][:7]
+   vix_by_ym.setdefault(ym, []).append(r['vix'])
+  vix_month_avg = {ym: sum(vs) / len(vs) for ym, vs in vix_by_ym.items() if vs}
 
  target_yms = sorted({
   ym for ym in (set(h41_by_ym) | set(auc_by_ym))
@@ -958,10 +970,12 @@ def compute_nowcast(sources):
    if prev_eq else tx['equity']
   )
   h_d = h41_by_ym[ym]['d_ust'] if ym in h41_by_ym and h41_by_ym[ym].get('d_ust') is not None else None
+  vix_m = vix_month_avg.get(ym)
   flow_samples.append({
    'period': ym,
    'x': _auc_features(a_rec),
    'h41_d': h_d,
+   'vix_excess': max(0.0, vix_m - 20.0) if vix_m is not None else None,
    'bond': tx['bond'],
    'equity': tx['equity'],
    'eq_base': eq_base,
@@ -987,25 +1001,58 @@ def compute_nowcast(sources):
    base += gamma_h41 * (h_d - h_mean)
   return base
 
+ def _fit_vix_drag(samples):
+  """Calibrate non-negative VIX excess equity drag inside LOOCV (sign-constrained Ridge)."""
+  pts = [
+   (s['vix_excess'], s['eq_base'] - s['equity'])
+   for s in samples
+   if s['vix_excess'] is not None and s['vix_excess'] > 0
+  ]
+  if len(pts) < 4:
+   return 0.0
+  num = sum(vx * drop for vx, drop in pts)
+  den = sum(vx * vx for vx, _ in pts) + 40.0
+  return max(0.0, min(18.0, num / den)) if den > 1e-6 else 0.0
+
+ backtest_rows = []
  if len(flow_samples) >= 6:
   bond_ridge, h41_mean_d = _fit_bond(flow_samples)
+  vix_beta = _fit_vix_drag(flow_samples)
   bond_loo_errs = []
   total_loo_errs = []
+  loo_preds = []
   for i in range(len(flow_samples)):
    sub = flow_samples[:i] + flow_samples[i + 1:]
    r_i, hm_i = _fit_bond(sub)
+   vb_i = _fit_vix_drag(sub)
    s_i = flow_samples[i]
    b_hat = _pred_bond(r_i, hm_i, s_i['x'], s_i['h41_d'])
+   eq_hat = s_i['eq_base'] - (vb_i * s_i['vix_excess'] if s_i['vix_excess'] is not None else 0.0)
+   tot_hat = b_hat + eq_hat
    bond_loo_errs.append(s_i['bond'] - b_hat)
    if i >= 3:
-    total_loo_errs.append(s_i['total'] - (b_hat + s_i['eq_base']))
+    total_loo_errs.append(s_i['total'] - tot_hat)
+    loo_preds.append((s_i['period'], s_i['total'], tot_hat))
   bond_rmse = math.sqrt(sum(e * e for e in bond_loo_errs) / len(bond_loo_errs))
   total_rmse = (
    math.sqrt(sum(e * e for e in total_loo_errs) / len(total_loo_errs))
    if total_loo_errs else bond_rmse * 1.25
   )
+  half80_bt = 1.28155 * total_rmse
+  for ym_bt, act_bt, pred_bt in loo_preds:
+   lo_bt = pred_bt - half80_bt
+   hi_bt = pred_bt + half80_bt
+   backtest_rows.append({
+    'period': ym_bt,
+    'actual_total': round(act_bt, 1),
+    'pred_total': round(pred_bt, 1),
+    'low80': round(lo_bt, 1),
+    'high80': round(hi_bt, 1),
+    'in_80_ci': lo_bt <= act_bt <= hi_bt,
+    'err': round(act_bt - pred_bt, 1),
+   })
  else:
-  bond_ridge, h41_mean_d = None, 0.0
+  bond_ridge, h41_mean_d, vix_beta = None, 0.0, 0.0
   bond_rmse, total_rmse = 520.0, 680.0
 
  eq_tail6 = [r['equity'] for r in tx_hist[-6:]]
@@ -1036,7 +1083,7 @@ def compute_nowcast(sources):
    bond_est = mean_bond_hist
 
   vix_m = vix_month_avg.get(ym)
-  vix_drag = -12.0 * max(0.0, vix_m - 20.0) if vix_m is not None else 0.0
+  vix_drag = -vix_beta * max(0.0, vix_m - 20.0) if vix_m is not None else 0.0
   eq_est = eq_anchor + vix_drag
   tot_est = bond_est + eq_est
 
@@ -1086,17 +1133,32 @@ def compute_nowcast(sources):
    'official_chg': off_chg,
   })
 
+ if len(target_yms) == 1:
+  range_lbl = f'{int(target_yms[0][5:])} 月'
+ elif len(target_yms) > 1:
+  y0, y1 = target_yms[0][:4], target_yms[-1][:4]
+  range_lbl = (
+   f'{int(target_yms[0][5:])}—{int(target_yms[-1][5:])} 月'
+   if y0 == y1
+   else f'{y0[2:]}年{int(target_yms[0][5:])}月—{y1[2:]}年{int(target_yms[-1][5:])}月'
+  )
+ else:
+  range_lbl = '近月'
+
+ ci80_hits = sum(1 for r in backtest_rows if r['in_80_ci'])
+ ci80_cov_pct = round(100.0 * ci80_hits / len(backtest_rows), 1) if backtest_rows else None
+
  return {
   'status': 'ok',
   'anchor_period': anchor_period,
   'latest_h41_date': h41.get('period'),
   'latest_auction_date': auc.get('period'),
   'next_tic_release_hint': '美国财政部通常于每月月中（约第 15–18 日）发布滞后两个月的 TIC 正式月报；新月报落地后，本估算窗口自动向后顺延。',
-  'country_boundary_note': '美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 9—11 月单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。',
+  'country_boundary_note': f'美联储 H.4.1 周报与美国财政部国债拍卖仅披露全球外国投资者合计口径，不公布分国别明细；因此不伪造中国内地或香港 {range_lbl}单月净买卖点估计，仅在总量与官方存量序列上展示虚线估算区间。',
   'methodology': (
    '双支柱官方高频桥接（Bridge Nowcast）：① 以美联储 H.4.1 外国官方托管可流通美债月度变动桥接 TIC 表 5 外国官方美债存量；'
    '② 以美国财政部附息国债（Note/Bond）拍卖海外间接投标占比、一级交易商兜底占比及全月等效获配额（施加经济符号单调非负岭回归约束），'
-   '叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间。'
+   '叠加 H.4.1 官方托管冲量估算外资净买美债，再结合近 6/24 个月美股净流入收缩均值与留一法样本内校准的 VIX 风险折价合成跨境长期证券净买入，并由历史留一法交叉验证（LOOCV）给出 80% 预测区间与样本外覆盖率回验。'
   ),
   'validation': {
    'ci_level': 0.80,
@@ -1106,7 +1168,12 @@ def compute_nowcast(sources):
    'bond_flow_loocv_rmse': round(bond_rmse, 1),
    'total_flow_loocv_rmse': round(total_rmse, 1),
    'flow_overlap_months': len(flow_samples),
+   'vix_equity_beta': round(vix_beta, 2),
+   'ci80_empirical_coverage_pct': ci80_cov_pct,
+   'ci80_hits': ci80_hits,
+   'ci80_total': len(backtest_rows),
   },
+  'backtest': backtest_rows[-12:],
   'months': months_out,
  }
 
@@ -1234,7 +1301,7 @@ def update(fixture_dir=None):
   out = {
    'schema_version': 1,
    'generated_at': utcnow(),
-   'site_version': '2.3.0',
+   'site_version': '2.5.0',
    'observation_policy': 'Daily market rates/prices, monthly TIC realizations, and high-frequency bridge nowcasts (80% prediction intervals) are strictly separated and labeled.',
    'sources': current,
    'nowcast': nowcast,

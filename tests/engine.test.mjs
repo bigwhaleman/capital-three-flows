@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { config, simulate, events, flowRates, advantage, cost, COV, INITIAL, PRESETS, identifyBounds } from '../public/engine.mjs';
+import { config, simulate, events, flowRates, advantage, cost, COV, INITIAL, PRESETS, identifyBounds, calibrateFromObservations } from '../public/engine.mjs';
 
 let count = 0;
 function test(name, fn) { fn(); count++; console.log('PASS', name); }
@@ -164,6 +164,32 @@ test('invalid data rejected', () => {
     assert.throws(() => config('base', o));
   }
   assert.throws(() => identifyBounds({ nU: 0, nC: 0, capR: -1 }));
+});
+
+test('liquidity pecking order liquidates US Treasuries faster than illiquid CN equity in cash crunch', () => {
+  const p = config('cash', { cashShock: 1.2, speed: 0.0001 });
+  const r = flowRates([20, 20, 20, 20, 20, 20, 2], [0.5, 0.7, 0.1], 0, p, p.step);
+  assert.ok(r.f[1][6] > r.f[0][6], 'US Treasuries should liquidate faster than US equity');
+  assert.ok(r.f[4][6] > r.f[2][6], 'Gold should liquidate faster than CN equity');
+});
+
+test('calibrateFromObservations maps live official readings to valid starting parameters', () => {
+  const mockObs = {
+    sources: {
+      us_treasury_yield: { metrics: [{ id: 'us_10y', value: 4.85 }] },
+      cn_gov_yield: { metrics: [{ id: 'cn_10y', value: 1.61 }] },
+      nyfed_sofr: { metrics: [{ id: 'sofr', value: 3.94 }] },
+      cboe_vix: { metrics: [{ id: 'vix', value: 28.29 }] },
+      ecb_fx: { metrics: [{ id: 'usd_cny', value: 6.68 }], history: [{ period: '2026-08-25', usd_cny: 6.75 }] }
+    }
+  };
+  const { overrides, notes } = calibrateFromObservations(mockObs);
+  near(overrides.bond0, -3.24, 1e-2);
+  assert.ok(overrides.tight > 0.8 && overrides.tight < 1.2);
+  assert.ok(overrides.cashShock > 0.25 && overrides.cashShock < 0.45);
+  assert.equal(notes.length, 4);
+  const p = config('base', overrides);
+  assert.ok(simulate(p).length === 37);
 });
 
 console.log(JSON.stringify({ tests: count, status: 'PASS', type: 'structure_and_identification_not_backtest' }));
